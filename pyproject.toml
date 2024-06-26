@@ -5,7 +5,9 @@ description = "Add your description here"
 authors = [
     { name = "Richard Walker", email = "richard.walker.90@gmail.com" }
 ]
-dependencies = []
+dependencies = [
+    "python-telegram-bot==20.8",
+]
 readme = "README.md"
 requires-python = ">= 3.8"
 
