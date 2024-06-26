@@ -22,6 +22,8 @@ httpx==0.26.0
 idna==3.7
     # via anyio
     # via httpx
+python-dotenv==1.0.1
+    # via shout-subgroup
 python-telegram-bot==20.8
     # via shout-subgroup
 sniffio==1.3.1
