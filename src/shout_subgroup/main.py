@@ -1,16 +1,11 @@
 import os
-from dataclasses import dataclass, asdict
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from shout import User,create_message_to_mention_members
 
 
-@dataclass
-class User:
-    """Stores users information"""
-    id: int
-    username: str
-    first_name: str
+
 
 # Your bot's token
 load_dotenv()
@@ -29,24 +24,6 @@ group_members = {
 }
 
 
-    
-
-def mention_user(user: User) -> str:
-    mention = ""
-    if user.username:
-        mention = f"@{user.username}"
-    else:
-        mention = f"[{user.first_name}](tg://user?id={user.id})"
-
-    return mention
-
-def create_message_to_mention_members(members) -> str:
-    shout = ""
-    for member_key in members:
-        shout += mention_user(members[member_key])+" "
-
-    return shout
-
 async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     print(f'Hello {update.effective_user.first_name}')
     await update.message.reply_text(f'Hello {update.effective_user.first_name}')
@@ -58,7 +35,7 @@ async def shout(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Create a message that @ all members
     message = create_message_to_mention_members(all_members)
     # Send the message with all the @s
-    await update.message.reply_text(message)
+    await update.message.reply_text(message, parse_mode='markdown')
 
 def main() -> None:
     print('Runninig ...')
