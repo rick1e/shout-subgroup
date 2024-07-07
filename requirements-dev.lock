@@ -22,6 +22,15 @@ httpx==0.26.0
 idna==3.7
     # via anyio
     # via httpx
+iniconfig==2.0.0
+    # via pytest
+packaging==24.1
+    # via pytest
+pluggy==1.5.0
+    # via pytest
+pytest==8.2.2
+    # via pytest-asyncio
+pytest-asyncio==0.23.7
 python-dotenv==1.0.1
     # via shout-subgroup
 python-telegram-bot==20.8
