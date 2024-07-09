@@ -8,5 +8,10 @@ wheels/
 
 # venv
 .venv
-
 .env
+
+# IDEs
+.idea
+
+# Database
+*.db
