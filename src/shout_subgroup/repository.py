@@ -15,6 +15,23 @@ async def find_all_users_in_group_chat(db: Session, telegram_group_chat_id: int)
     return users
 
 
+async def find_all_subgroups_in_group_chat(db: Session, telegram_group_chat_id: int) -> list[Type[SubgroupModel]]:
+    """
+    Finds all subgroups for a group chat
+    :param db: SQLAlchemy session
+    :param telegram_group_chat_id:
+    :return: the list of subgroups
+    """
+    result = (
+        db.query(SubgroupModel)
+        .join(GroupChatModel)
+        .filter(GroupChatModel.telegram_group_chat_id == telegram_group_chat_id)
+        .all()
+    )
+
+    return result
+
+
 async def find_subgroup_by_telegram_group_chat_id_and_subgroup_name(db: Session,
                                                                     telegram_group_chat_id: int,
                                                                     subgroup_name: str) -> SubgroupModel | None:

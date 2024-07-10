@@ -47,5 +47,10 @@ async def test_list_subgroup(session: Session):
 
 
 @pytest.mark.asyncio
+async def test_list_subgroup_for_no_subgroups(session: Session):
+    assert False
+
+
+@pytest.mark.asyncio
 async def test_list_subgroup_throws_not_group_chat_exception(session: Session):
     assert False
