@@ -11,18 +11,16 @@ from shout_subgroup.repository import (find_subgroup_by_telegram_group_chat_id_a
                                        find_group_chat_by_telegram_group_chat_id, find_users_by_usernames,
                                        insert_subgroup,
                                        insert_group_chat)
-from shout_subgroup.utils import usernames_valid
+from shout_subgroup.utils import usernames_valid, is_group_chat
 
 
 async def create_subgroup(db: Session,
                           telegram_chat: Chat,
                           subgroup_name: str,
                           usernames: set[str]) -> SubgroupModel:
-    # Telegram uses negative numbers for group chats
-    # If it's a positive number, that means it's an individual.
-    # We can't create subgroup for an individual.
+
     telegram_chat_id = telegram_chat.id
-    if telegram_chat_id >= 0:
+    if not await is_group_chat(telegram_chat_id):
         msg = f"Can't create subgroup because telegram chat id {telegram_chat_id} is not a group chat."
         logging.info(msg)
         raise NotGroupChatError(msg)
@@ -73,7 +71,7 @@ async def create_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_
         return
 
     usernames = {name.replace("@", "") for name in set(args[1:])}  # removing mention from args for usernames
-    if not usernames_valid(usernames):
+    if not await usernames_valid(usernames):
         await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
 
     subgroup_name = args[0]
