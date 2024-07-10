@@ -2,8 +2,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Table
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
 
@@ -12,6 +11,14 @@ Base = declarative_base()
 users_subgroups_join_table = Table(
     'users_subgroups_join_table', Base.metadata,
     Column('subgroup_id', String, ForeignKey('subgroups.subgroup_id')),
+    Column('user_id', String, ForeignKey('users.user_id'))
+)
+
+# Needed for the many-to-many relationship between
+# Users and GroupChats
+users_group_chats_join_table = Table(
+    'users_group_chats_join_table', Base.metadata,
+    Column('group_chat_id', String, ForeignKey('group_chats.group_chat_id')),
     Column('user_id', String, ForeignKey('users.user_id'))
 )
 
@@ -47,3 +54,4 @@ class GroupChatModel(Base):
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
     updated_at = Column(DateTime)
     subgroups = relationship("SubgroupModel", backref="group_chat")
+    users = relationship("UserModel", secondary=users_group_chats_join_table, backref="group_chats")

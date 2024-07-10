@@ -2,7 +2,9 @@ import os
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from shout import User,create_message_to_mention_members
+from shout import shout_all_members
+from shout_subgroup.models import UserModel
+from shout_subgroup.database import session
 
 
 
@@ -10,18 +12,6 @@ from shout import User,create_message_to_mention_members
 # Your bot's token
 load_dotenv()
 TOKEN = os.getenv('TELEGRAM_API_KEY')
-group_members = {
-    "test1" : User(
-        id=0,
-        username='Hulk',
-        first_name=''
-    ),
-    "test2" : User(
-        id=1,
-        username='',
-        first_name='Nick'
-    )
-}
 
 
 async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -29,12 +19,8 @@ async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(f'Hello {update.effective_user.first_name}')
 
 async def shout(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    ## TODO ##
-    # Get all members of the group chat
-    all_members = group_members
-    # Create a message that @ all members
-    message = create_message_to_mention_members(all_members)
-    # Send the message with all the @s
+    print(update.effective_chat.id)
+    message = await shout_all_members(session,update.effective_chat.id)
     await update.message.reply_text(message, parse_mode='markdown')
 
 def main() -> None:
