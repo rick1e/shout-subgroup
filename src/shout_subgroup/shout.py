@@ -1,8 +1,12 @@
 from dataclasses import dataclass, asdict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from telegram import Update
+from telegram.ext import ContextTypes
 from typing import Sequence
-from shout_subgroup.models import UserModel, users_group_chats_join_table, GroupChatModel
+from shout_subgroup.models import UserModel, GroupChatModel
+from shout_subgroup.repository import find_all_users_in_GC
+from shout_subgroup.database import session
 
 async def shout_all_members(db: Session, telegram_group_chat_id:int) -> str:
     
@@ -26,10 +30,7 @@ def create_message_to_mention_members(members: Sequence[UserModel]) -> str:
 
     return message
 
-async def find_all_users_in_GC(db: Session, telegram_group_chat_id:int) -> Sequence[UserModel]:
-    
-    users = db.query(UserModel).join(users_group_chats_join_table).join(GroupChatModel).filter(
-        GroupChatModel.telegram_group_chat_id == telegram_group_chat_id
-    ).all()
-    
-    return users
+async def shout_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    print(update.effective_user.username)
+    message = await shout_all_members(session,update.effective_chat.id)
+    await update.message.reply_text(message, parse_mode='markdown')

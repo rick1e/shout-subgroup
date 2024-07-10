@@ -32,6 +32,8 @@ def session():
     )
     session.add(john)
     session.add(jane)
+    group_chat.users.append(john)
+    group_chat.users.append(jane)
     session.add(group_chat)
     session.commit()
 
@@ -56,9 +58,9 @@ async def test_shout_all_members(session: Session):
 
     usernames = {"@johndoe", "@janedoe"}
 
-    # When: We add subgroup
-    message = await shout_all_members(session)
+    # When: We shout all group members
+    message = await shout_all_members(session,TELEGRAM_GROUP_CHAT_ID)
 
-    # Then: It's added correctly
+    # Then: It mentions them
     assert message == "@johndoe @janedoe "
 

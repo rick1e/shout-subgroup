@@ -10,24 +10,13 @@ from telegram.ext import ContextTypes, ApplicationBuilder, CommandHandler
 
 from shout_subgroup.database import session
 from shout_subgroup.models import SubgroupModel, UserModel, GroupChatModel
-
-
-class NotGroupChatError(Exception):
-    def __init__(self, message):
-        self.message = message
-        super().__init__(self.message)
-
-
-class SubGroupExistsError(Exception):
-    def __init__(self, message):
-        self.message = message
-        super().__init__(self.message)
-
-
-class UserDoesNotExistsError(Exception):
-    def __init__(self, message):
-        self.message = message
-        super().__init__(self.message)
+from shout_subgroup.exceptions import NotGroupChatError, SubGroupExistsError, UserDoesNotExistsError
+from shout_subgroup.utils import usernames_valid
+from shout_subgroup.repository import (find_subgroup_by_telegram_group_chat_id_and_subgroup_name,
+                        find_group_chat_by_telegram_group_chat_id, find_users_by_usernames, 
+                        insert_subgroup,
+                        insert_group_chat)
+from shout_subgroup.database import session
 
 
 async def create_subgroup(db: Session,
@@ -68,80 +57,6 @@ async def create_subgroup(db: Session,
     created_subgroup = await insert_subgroup(db, subgroup_name, group_chat.group_chat_id, users_to_be_added)
     return created_subgroup
 
-
-async def insert_subgroup(
-        db: Session,
-        subgroup_name: str,
-        group_chat_id: str,
-        users: Sequence[UserModel]
-) -> SubgroupModel:
-    new_subgroup = SubgroupModel(
-        name=subgroup_name,
-        group_chat_id=group_chat_id,
-        users=users
-    )
-    db.add(new_subgroup)
-    db.commit()
-    db.refresh(new_subgroup)
-    return new_subgroup
-
-
-async def find_subgroup_by_telegram_group_chat_id_and_subgroup_name(db: Session,
-                                                                    telegram_group_chat_id: int,
-                                                                    subgroup_name: str) -> SubgroupModel | None:
-    result = (
-        db.query(SubgroupModel)
-        .join(GroupChatModel)
-        .filter(
-            GroupChatModel.telegram_group_chat_id == telegram_group_chat_id,
-            SubgroupModel.name == subgroup_name
-        ).first()
-    )
-
-    return result
-
-
-async def find_users_by_usernames(db: Session, usernames: set[str]) -> Sequence[UserModel]:
-    stmt = (
-        select(UserModel)
-        .where(UserModel.username.in_(usernames))
-    )
-    result = db.execute(stmt).scalars().all()
-    return result
-
-
-async def find_group_chat_by_telegram_group_chat_id(db: Session, telegram_group_chat_id: int) -> GroupChatModel | None:
-    stmt = (
-        select(GroupChatModel)
-        .where(GroupChatModel.telegram_group_chat_id == telegram_group_chat_id)
-    )
-
-    result = db.execute(stmt).scalars().first()
-    return result
-
-
-async def insert_group_chat(db: Session, telegram_chat: Chat) -> GroupChatModel:
-    new_group_chat = GroupChatModel(
-        telegram_group_chat_id=telegram_chat.id,
-        name=telegram_chat.title,
-        description=telegram_chat.description if hasattr(telegram_chat, 'description') else ""
-    )
-    db.add(new_group_chat)
-    db.commit()
-    db.refresh(new_group_chat)  # Refresh to get the ID and other generated values
-    return new_group_chat
-
-
-def usernames_valid(usernames: set[str]) -> bool:
-    """
-    Checks if usernames are valid strings
-    :param usernames:
-    :return: True if valid
-    """
-    # TODO: Implement stricter validations later
-    return all(isinstance(item, str) for item in usernames)
-
-
 async def create_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Handles the create subgroup command.
@@ -161,7 +76,7 @@ async def create_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_
         await update.message.reply_text(msg)
         return
 
-    usernames: set[str] = set(args[1:])  # Using a set here to remove duplicates
+    usernames = [name.replace("@","") for name in set(args[1:])] #removing mention from args for usernames
     if not usernames_valid(usernames):
         await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
 
@@ -192,16 +107,3 @@ async def create_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_
     except Exception:
         logging.exception("An unexpected exception occurred")
         await update.message.reply_text("Whoops 😅, something went wrong on our side.")
-
-
-def main() -> None:
-    load_dotenv()
-    token = os.getenv('TELEGRAM_API_KEY')
-
-    app = ApplicationBuilder().token(token).build()
-    app.add_handler(CommandHandler("group", create_subgroup_handler))
-    app.run_polling()
-
-
-if __name__ == '__main__':
-    main()
