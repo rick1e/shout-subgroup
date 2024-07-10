@@ -5,12 +5,12 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from typing import Sequence
 from shout_subgroup.models import UserModel, GroupChatModel
-from shout_subgroup.repository import find_all_users_in_GC
+from shout_subgroup.repository import find_all_users_in_group_chat
 from shout_subgroup.database import session
 
 async def shout_all_members(db: Session, telegram_group_chat_id:int) -> str:
     
-    all_members = await find_all_users_in_GC(db, telegram_group_chat_id)
+    all_members = await find_all_users_in_group_chat(db, telegram_group_chat_id)
     message = create_message_to_mention_members(all_members)
     return message
     

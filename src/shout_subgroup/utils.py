@@ -1,4 +1,3 @@
-
 def usernames_valid(usernames: set[str]) -> bool:
     """
     Checks if usernames are valid strings
@@ -7,4 +6,3 @@ def usernames_valid(usernames: set[str]) -> bool:
     """
     # TODO: Implement stricter validations later
     return all(isinstance(item, str) for item in usernames)
-
