@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 from shout_subgroup.models import Base, UserModel, GroupChatModel
-from shout_subgroup.subgroup import create_subgroup
+from shout_subgroup.shout import shout_all_members
 
 TELEGRAM_GROUP_CHAT_DESCRIPTION = "This is an example group chat"
 TELEGRAM_GROUP_CHAT_NAME = "Example Group Chat"
@@ -23,8 +23,8 @@ def session():
 
     # Seed the database with initial data
     session = SessionLocal()
-    john = UserModel(telegram_user_id=12345, username="@johndoe", first_name="John", last_name="Doe")
-    jane = UserModel(telegram_user_id=67890, username="@janedoe", first_name="Jane", last_name="Doe")
+    john = UserModel(telegram_user_id=12345, username="johndoe", first_name="John", last_name="Doe")
+    jane = UserModel(telegram_user_id=67890, username="janedoe", first_name="Jane", last_name="Doe")
     group_chat = GroupChatModel(
         telegram_group_chat_id=TELEGRAM_GROUP_CHAT_ID,
         name=TELEGRAM_GROUP_CHAT_NAME,
@@ -50,27 +50,15 @@ class MockTelegramChat:
 
 
 @pytest.mark.asyncio
-async def test_create_subgroup(session: Session):
+async def test_shout_all_members(session: Session):
     # Given: A group chat already exists
-    # The database is seeded with one
+    # The database is seeded with one with users
 
-    # And: We have the subgroup information
-    telegram_chat = Mock()
-    telegram_chat.id = TELEGRAM_GROUP_CHAT_ID
-    telegram_chat.title = TELEGRAM_GROUP_CHAT_NAME
-    telegram_chat.description = TELEGRAM_GROUP_CHAT_DESCRIPTION
-
-    subgroup_name = "Archery"
     usernames = {"@johndoe", "@janedoe"}
 
     # When: We add subgroup
-    subgroup = await create_subgroup(session, telegram_chat, subgroup_name, usernames)
+    message = await shout_all_members(session)
 
     # Then: It's added correctly
-    assert subgroup.subgroup_id is not None
-    assert subgroup.name == subgroup_name
-    assert subgroup.group_chat_id is not None
-
-    assert len(subgroup.users) == 2
-    assert set([user.username for user in subgroup.users]) == usernames
+    assert message == "@johndoe @janedoe "
 

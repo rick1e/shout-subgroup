@@ -14,8 +14,8 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 # Create users
-richie = UserModel(telegram_user_id=12345, username="@ashcir", first_name="Richie", last_name="Doe")
-alrick = UserModel(telegram_user_id=67890, username="@alrickb", first_name="Alrick", last_name="Rain")
+richie = UserModel(telegram_user_id=12345, username="ashcir", first_name="Richie", last_name="Doe")
+alrick = UserModel(telegram_user_id=67890, username="alrickb", first_name="Alrick", last_name="Rain")
 
 session.add(richie)
 session.add(alrick)
@@ -25,8 +25,12 @@ session.commit()
 # subgroup = SubgroupModel(name="Subgroup 1", description="This is the first subgroup", users=[user1, user2])
 #
 # # Create a group chat and associate the subgroup
-# group_chat = GroupChatModel(telegram_group_chat_id=54321, name="Group Chat 1", description="This is a group chat", subgroups=[subgroup])
+group_chat = GroupChatModel(telegram_group_chat_id=-4239122711, name="Group Chat 1", description="This is a group chat")
+
+group_chat.users.append(richie)
+group_chat.users.append(alrick)
+
 #
 # # Persist data to the database
-# session.add(group_chat)
-# session.commit()
+session.add(group_chat)
+session.commit()
