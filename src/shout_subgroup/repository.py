@@ -4,13 +4,28 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from telegram import Chat
 
-from shout_subgroup.models import SubgroupModel, UserModel, GroupChatModel, users_group_chats_join_table
+from shout_subgroup.models import SubgroupModel, UserModel, GroupChatModel, users_group_chats_join_table, users_subgroups_join_table
 
+
+async def find_all_users_in_subgroup(db: Session, subgroup_name: str) -> list[Type[UserModel]]:
+    users = (
+        db.query(UserModel)
+        .join(users_subgroups_join_table)
+        .join(SubgroupModel)
+        .filter(SubgroupModel.name == subgroup_name)
+        .all()
+    )
+
+    return users
 
 async def find_all_users_in_group_chat(db: Session, telegram_group_chat_id: int) -> list[Type[UserModel]]:
-    users = db.query(UserModel).join(users_group_chats_join_table).join(GroupChatModel).filter(
-        GroupChatModel.telegram_group_chat_id == telegram_group_chat_id
-    ).all()
+    users = (
+        db.query(UserModel)
+        .join(users_group_chats_join_table)
+        .join(GroupChatModel)
+        .filter(GroupChatModel.telegram_group_chat_id == telegram_group_chat_id)
+        .all()
+    )
 
     return users
 
