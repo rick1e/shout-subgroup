@@ -4,8 +4,8 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
-from shout_subgroup.models import Base, UserModel, GroupChatModel
-from shout_subgroup.shout import shout_all_members
+from shout_subgroup.models import Base, UserModel, GroupChatModel, SubgroupModel
+from shout_subgroup.shout import shout_all_members, shout_subgroup_members
 
 TELEGRAM_GROUP_CHAT_DESCRIPTION = "This is an example group chat"
 TELEGRAM_GROUP_CHAT_NAME = "Example Group Chat"
@@ -30,11 +30,18 @@ def session():
         name=TELEGRAM_GROUP_CHAT_NAME,
         description=TELEGRAM_GROUP_CHAT_DESCRIPTION
     )
+    subgroup = SubgroupModel(
+        subgroup_id=123123,
+        group_chat_id=TELEGRAM_GROUP_CHAT_ID,
+        name='subgroup'
+    )
     session.add(john)
     session.add(jane)
     group_chat.users.append(john)
     group_chat.users.append(jane)
     session.add(group_chat)
+    subgroup.users.append(john)
+    session.add(subgroup)
     session.commit()
 
     yield session
@@ -64,3 +71,16 @@ async def test_shout_all_members(session: Session):
     # Then: It mentions them
     assert message == "@johndoe @janedoe "
 
+
+@pytest.mark.asyncio
+async def test_shout_subgroup_members(session: Session):
+    # Given: A group chat already exists
+    # The database is seeded with one with users
+
+    usernames = {"@johndoe"}
+
+    # When: We shout all group members
+    message = await shout_subgroup_members(session,'subgroup')
+
+    # Then: It mentions them
+    assert message == "@johndoe "
