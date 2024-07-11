@@ -1,4 +1,5 @@
 import logging
+from typing import List, Type
 
 from sqlalchemy.orm import Session
 from telegram import Update
@@ -6,11 +7,12 @@ from telegram.ext import ContextTypes
 
 from shout_subgroup.database import session
 from shout_subgroup.exceptions import NotGroupChatError
+from shout_subgroup.models import SubgroupModel
 from shout_subgroup.repository import find_all_subgroups_in_group_chat
 from shout_subgroup.utils import is_group_chat
 
 
-async def list_subgroups(db: Session, telegram_group_chat_id: int) -> str:
+async def list_subgroups(db: Session, telegram_group_chat_id: int) -> list[Type[SubgroupModel]]:
     # Guard Clauses
     if not await is_group_chat(telegram_group_chat_id):
         msg = f"Can't list subgroups because telegram chat id {telegram_group_chat_id} is not a group chat."
@@ -19,12 +21,7 @@ async def list_subgroups(db: Session, telegram_group_chat_id: int) -> str:
 
     # Get all the subgroups for the group chat
     subgroups = await find_all_subgroups_in_group_chat(db, telegram_group_chat_id)
-
-    # Transform into string
-    subgroups_names = [sub.name for sub in subgroups]
-
-    # "mock-subgroup-1, mock-subgroup-2, mock-subgroup-3"
-    return ", ".join(subgroups_names)
+    return subgroups
 
 
 async def list_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -45,7 +42,11 @@ async def list_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TY
             await update.message.reply_text(f"There are no subgroups in this chat")
             return
 
-        await update.message.reply_text(f"Here are the subgroups for this chat: {subgroups}")
+        # "mock-subgroup-1, mock-subgroup-2, mock-subgroup-3"
+        subgroups_names = [sub.name for sub in subgroups]
+        joined_subgroup_names = ", ".join(subgroups_names)
+
+        await update.message.reply_text(f"Here are the subgroups for this chat: {joined_subgroup_names}")
         return
 
     except NotGroupChatError:

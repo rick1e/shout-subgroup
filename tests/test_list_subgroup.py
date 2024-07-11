@@ -2,7 +2,9 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
-from shout_subgroup.models import Base, UserModel, GroupChatModel
+from shout_subgroup.exceptions import NotGroupChatError
+from shout_subgroup.list_subgroup import list_subgroups
+from shout_subgroup.models import Base, UserModel, GroupChatModel, SubgroupModel
 
 TELEGRAM_GROUP_CHAT_DESCRIPTION = "This is an example group chat"
 TELEGRAM_GROUP_CHAT_NAME = "Example Group Chat"
@@ -43,14 +45,65 @@ def session():
 
 @pytest.mark.asyncio
 async def test_list_subgroup(session: Session):
-    assert False
+    # Given: A subgroup exists in the group chat
+    telegram_group_chat_id = -123
+    subgroup_names = ["mock-subgroup-1", "mock-subgroup-2", "mock-subgroup-3"]
+    await create_test_group_chat_with_subgroups(session, telegram_group_chat_id, subgroup_names)
+
+    # When: We list the subgroups
+    result = await list_subgroups(session, telegram_group_chat_id)
+
+    # Then: All of them should appear
+    assert len(result) == len(subgroup_names)
+    result_names = [sub.name for sub in result]
+    assert set(result_names) == set(subgroup_names)
 
 
 @pytest.mark.asyncio
 async def test_list_subgroup_for_no_subgroups(session: Session):
-    assert False
+    # Given: No subgroups exits in the group chat
+    telegram_group_chat_id = -123
+    subgroup_names = []
+    await create_test_group_chat_with_subgroups(session, telegram_group_chat_id, subgroup_names)
+
+    # When: We list the subgroups
+    result = await list_subgroups(session, telegram_group_chat_id)
+
+    # Then: An empty string is returned
+    assert result == []
 
 
 @pytest.mark.asyncio
 async def test_list_subgroup_throws_not_group_chat_exception(session: Session):
-    assert False
+    # Given: The telegram chat is not a group chat
+    user_chat_id = 123
+
+    # When: We try to list the subgroups
+    # Then: An exception is thrown
+    with pytest.raises(NotGroupChatError) as ex:
+        await list_subgroups(session, user_chat_id)
+
+    assert str(user_chat_id) in ex.value.message
+
+
+async def create_test_group_chat_with_subgroups(
+        session: Session,
+        telegram_group_chat_id: int,
+        subgroup_names: list[str]
+) -> tuple[GroupChatModel, list[SubgroupModel]]:
+    group_chat = GroupChatModel(
+        telegram_group_chat_id=telegram_group_chat_id,
+        name="Test Group Chat",
+        description="A test group chat"
+    )
+    session.add(group_chat)
+    session.commit()
+
+    subgroups = [
+        SubgroupModel(name=name, group_chat_id=group_chat.group_chat_id)
+        for name in subgroup_names
+    ]
+    session.add_all(subgroups)
+    session.commit()
+
+    return group_chat, subgroups
