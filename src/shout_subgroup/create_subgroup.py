@@ -1,33 +1,26 @@
 import logging
-import os
-from typing import Sequence
 
-from dotenv import load_dotenv
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 from telegram import Update, Chat
-from telegram.ext import ContextTypes, ApplicationBuilder, CommandHandler
+from telegram.ext import ContextTypes
 
 from shout_subgroup.database import session
-from shout_subgroup.models import SubgroupModel, UserModel, GroupChatModel
 from shout_subgroup.exceptions import NotGroupChatError, SubGroupExistsError, UserDoesNotExistsError
-from shout_subgroup.utils import usernames_valid
+from shout_subgroup.models import SubgroupModel
 from shout_subgroup.repository import (find_subgroup_by_telegram_group_chat_id_and_subgroup_name,
-                        find_group_chat_by_telegram_group_chat_id, find_users_by_usernames, 
-                        insert_subgroup,
-                        insert_group_chat)
-from shout_subgroup.database import session
+                                       find_group_chat_by_telegram_group_chat_id, find_users_by_usernames,
+                                       insert_subgroup,
+                                       insert_group_chat)
+from shout_subgroup.utils import usernames_valid, is_group_chat
 
 
 async def create_subgroup(db: Session,
                           telegram_chat: Chat,
                           subgroup_name: str,
                           usernames: set[str]) -> SubgroupModel:
-    # Telegram uses negative numbers for group chats
-    # If it's a positive number, that means it's an individual.
-    # We can't create subgroup for an individual.
+
     telegram_chat_id = telegram_chat.id
-    if telegram_chat_id >= 0:
+    if not await is_group_chat(telegram_chat_id):
         msg = f"Can't create subgroup because telegram chat id {telegram_chat_id} is not a group chat."
         logging.info(msg)
         raise NotGroupChatError(msg)
@@ -57,6 +50,7 @@ async def create_subgroup(db: Session,
     created_subgroup = await insert_subgroup(db, subgroup_name, group_chat.group_chat_id, users_to_be_added)
     return created_subgroup
 
+
 async def create_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Handles the create subgroup command.
@@ -76,8 +70,8 @@ async def create_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_
         await update.message.reply_text(msg)
         return
 
-    usernames = [name.replace("@","") for name in set(args[1:])] #removing mention from args for usernames
-    if not usernames_valid(usernames):
+    usernames = {name.replace("@", "") for name in set(args[1:])}  # removing mention from args for usernames
+    if not await usernames_valid(usernames):
         await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
 
     subgroup_name = args[0]

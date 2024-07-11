@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 from shout_subgroup.models import Base, UserModel, GroupChatModel
-from shout_subgroup.subgroup import create_subgroup
+from shout_subgroup.create_subgroup import create_subgroup
 
 TELEGRAM_GROUP_CHAT_DESCRIPTION = "This is an example group chat"
 TELEGRAM_GROUP_CHAT_NAME = "Example Group Chat"

@@ -1,19 +1,36 @@
-from typing import Sequence
+from typing import Sequence, Type
 
-from telegram import Chat
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from telegram import Chat
 
-from shout_subgroup.database import session
 from shout_subgroup.models import SubgroupModel, UserModel, GroupChatModel, users_group_chats_join_table
 
-async def find_all_users_in_GC(db: Session, telegram_group_chat_id:int) -> Sequence[UserModel]:
-    
+
+async def find_all_users_in_group_chat(db: Session, telegram_group_chat_id: int) -> list[Type[UserModel]]:
     users = db.query(UserModel).join(users_group_chats_join_table).join(GroupChatModel).filter(
         GroupChatModel.telegram_group_chat_id == telegram_group_chat_id
     ).all()
-    
+
     return users
+
+
+async def find_all_subgroups_in_group_chat(db: Session, telegram_group_chat_id: int) -> list[Type[SubgroupModel]]:
+    """
+    Finds all subgroups for a group chat
+    :param db: SQLAlchemy session
+    :param telegram_group_chat_id:
+    :return: the list of subgroups
+    """
+    result = (
+        db.query(SubgroupModel)
+        .join(GroupChatModel)
+        .filter(GroupChatModel.telegram_group_chat_id == telegram_group_chat_id)
+        .all()
+    )
+
+    return result
+
 
 async def find_subgroup_by_telegram_group_chat_id_and_subgroup_name(db: Session,
                                                                     telegram_group_chat_id: int,
@@ -29,6 +46,7 @@ async def find_subgroup_by_telegram_group_chat_id_and_subgroup_name(db: Session,
 
     return result
 
+
 async def find_users_by_usernames(db: Session, usernames: set[str]) -> Sequence[UserModel]:
     stmt = (
         select(UserModel)
@@ -36,6 +54,7 @@ async def find_users_by_usernames(db: Session, usernames: set[str]) -> Sequence[
     )
     result = db.execute(stmt).scalars().all()
     return result
+
 
 async def find_group_chat_by_telegram_group_chat_id(db: Session, telegram_group_chat_id: int) -> GroupChatModel | None:
     stmt = (
@@ -45,7 +64,6 @@ async def find_group_chat_by_telegram_group_chat_id(db: Session, telegram_group_
 
     result = db.execute(stmt).scalars().first()
     return result
-
 
 
 async def insert_subgroup(
@@ -63,6 +81,7 @@ async def insert_subgroup(
     db.commit()
     db.refresh(new_subgroup)
     return new_subgroup
+
 
 async def insert_group_chat(db: Session, telegram_chat: Chat) -> GroupChatModel:
     new_group_chat = GroupChatModel(
