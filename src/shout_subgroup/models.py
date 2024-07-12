@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Table
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Table, UniqueConstraint
 from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
@@ -43,6 +43,7 @@ class SubgroupModel(Base):
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
     updated_at = Column(DateTime)
     users = relationship("UserModel", secondary=users_subgroups_join_table, backref="subgroups")
+    table_args = (UniqueConstraint('group_chat_id', 'name', name='_group_chat_id_name_uc'))
 
 
 class GroupChatModel(Base):
