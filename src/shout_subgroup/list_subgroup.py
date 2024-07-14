@@ -79,8 +79,11 @@ async def list_subgroup_members(db: Session, telegram_group_chat_id: int, subgro
         raise NotGroupChatError(msg)
 
     # If subgroup does not exist throw exception
-    subgroup = await find_subgroup_by_telegram_group_chat_id_and_subgroup_name(db, telegram_group_chat_id,
-                                                                               subgroup_name)
+    subgroup = await find_subgroup_by_telegram_group_chat_id_and_subgroup_name(
+        db,
+        telegram_group_chat_id,
+        subgroup_name
+    )
     if not subgroup:
         msg = f"Subgroup: {subgroup_name} does not exist in telegram group chat: {telegram_group_chat_id}"
         logging.info(msg)
@@ -118,4 +121,8 @@ async def list_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TY
         return
     except SubGroupDoesNotExistsError:
         await update.message.reply_text(f"Subgroup '{subgroup_name}' does not exist.")
+        return
+    except Exception:
+        logging.exception("An unexpected exception occurred")
+        await update.message.reply_text("Whoops 😅, something went wrong on our side.")
         return
