@@ -1,86 +1,93 @@
-from unittest.mock import Mock
-
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session
 
-from shout_subgroup.models import Base, UserModel, GroupChatModel, SubgroupModel
+from conftest import db
+from shout_subgroup.exceptions import NotGroupChatError, GroupChatDoesNotExistError
 from shout_subgroup.shout import shout_all_members, shout_subgroup_members
-
-TELEGRAM_GROUP_CHAT_DESCRIPTION = "This is an example group chat"
-TELEGRAM_GROUP_CHAT_NAME = "Example Group Chat"
-TELEGRAM_GROUP_CHAT_ID = -123456789
-
-# Create an SQLite in-memory database and a session factory
-engine = create_engine('sqlite:///:memory:', echo=True)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-@pytest.fixture
-def session():
-    # Create tables
-    Base.metadata.create_all(bind=engine)
-
-    # Seed the database with initial data
-    session = SessionLocal()
-    john = UserModel(telegram_user_id=12345, username="johndoe", first_name="John", last_name="Doe")
-    jane = UserModel(telegram_user_id=67890, username="janedoe", first_name="Jane", last_name="Doe")
-    group_chat = GroupChatModel(
-        telegram_group_chat_id=TELEGRAM_GROUP_CHAT_ID,
-        name=TELEGRAM_GROUP_CHAT_NAME,
-        description=TELEGRAM_GROUP_CHAT_DESCRIPTION
-    )
-    subgroup = SubgroupModel(
-        subgroup_id=123123,
-        group_chat_id=TELEGRAM_GROUP_CHAT_ID,
-        name='subgroup'
-    )
-    session.add(john)
-    session.add(jane)
-    group_chat.users.append(john)
-    group_chat.users.append(jane)
-    session.add(group_chat)
-    subgroup.users.append(john)
-    session.add(subgroup)
-    session.commit()
-
-    yield session
-
-    # Close the session and drop all tables
-    session.close()
-    Base.metadata.drop_all(bind=engine)
-
-
-class MockTelegramChat:
-    def __init__(self, id, title, description):
-        self.id = id
-        self.title = title
-        self.description = description
+from test_helpers import create_test_user, create_test_subgroup, create_test_group_chat
 
 
 @pytest.mark.asyncio
-async def test_shout_all_members(session: Session):
-    # Given: A group chat already exists
-    # The database is seeded with one with users
+async def test_shout_all_members(db: Session):
+    # Given: A group chat already exists with users
+    john = create_test_user(db, telegram_user_id=12345, username="johndoe", first_name="John", last_name="Doe")
+    jane = create_test_user(db, telegram_user_id=67890, username="janedoe", first_name="Jane", last_name="Doe")
 
-    usernames = {"@johndoe", "@janedoe"}
+    telegram_group_chat_id = -123456789
+    group_chat = create_test_group_chat(db, telegram_group_chat_id, "Group Chat", [john, jane])
 
     # When: We shout all group members
-    message = await shout_all_members(session,TELEGRAM_GROUP_CHAT_ID)
+    message = await shout_all_members(db, group_chat.telegram_group_chat_id)
 
     # Then: It mentions them
     assert message == "@johndoe @janedoe "
 
 
 @pytest.mark.asyncio
-async def test_shout_subgroup_members(session: Session):
+async def test_shout_subgroup_members(db: Session):
     # Given: A group chat already exists
-    # The database is seeded with one with users
+    john = create_test_user(db, telegram_user_id=12345, username="johndoe", first_name="John", last_name="Doe")
+    jane = create_test_user(db, telegram_user_id=67890, username="janedoe", first_name="Jane", last_name="Doe")
 
-    usernames = {"@johndoe"}
+    telegram_group_chat_id = -123456789
+    group_chat = create_test_group_chat(db, telegram_group_chat_id, "Group Chat", [john, jane])
 
-    # When: We shout all group members
-    message = await shout_subgroup_members(session,'subgroup')
+    # And: the group chat has a subgroup with members
+    subgroup_name = "Archery"
+    create_test_subgroup(db, group_chat.group_chat_id, subgroup_name, [john])
+
+    # When: We shout all subgroup members
+    message = await shout_subgroup_members(db, group_chat.telegram_group_chat_id, subgroup_name)
 
     # Then: It mentions them
     assert message == "@johndoe "
+
+
+@pytest.mark.asyncio
+async def test_shout_subgroup_members_only_mentions_members_for_group_chat(db: Session):
+    # Given: A multiple group chats already exists
+    john = create_test_user(db, telegram_user_id=12345, username="johndoe", first_name="John", last_name="Doe")
+    jane = create_test_user(db, telegram_user_id=67890, username="janedoe", first_name="Jane", last_name="Doe")
+    sue = create_test_user(db, telegram_user_id=54321, username="suedoe", first_name="Sue", last_name="Doe")
+
+    telegram_group_chat_a_id = -123456789
+    group_chat_a = create_test_group_chat(db, telegram_group_chat_a_id, "Group Chat A", [john, jane])
+    telegram_group_chat_b_id = -987654321
+    group_chat_b = create_test_group_chat(db, telegram_group_chat_b_id, "Group Chat B", [jane, sue])
+
+    # And: The group chats have a subgroup each with the same name
+    subgroup_name = "Party"
+    create_test_subgroup(db, group_chat_a.group_chat_id, subgroup_name, [john])
+    create_test_subgroup(db, group_chat_b.group_chat_id, subgroup_name, [sue])
+
+    # When: We shout all subgroup members for a group chat
+    message = await shout_subgroup_members(db, group_chat_a.telegram_group_chat_id, subgroup_name)
+
+    # Then: It mentions them
+    assert message == "@johndoe "
+
+
+@pytest.mark.asyncio
+async def test_shout_subgroup_members_throws_not_group_chat_exception(db: Session):
+    # Given: The telegram chat is not a group chat
+    user_chat_id = 123
+
+    # When: We try to shout subgroup members
+    # Then: An exception is thrown
+    with pytest.raises(NotGroupChatError) as ex:
+        await shout_subgroup_members(db, user_chat_id, "Archery")
+
+    assert str(user_chat_id) in ex.value.message
+
+
+@pytest.mark.asyncio
+async def test_shout_subgroup_members_throws_group_chat_does_not_exist_exception(db: Session):
+    # Given: The group chat does not exist
+    non_existent_group_chat = -123
+
+    # When: We try to shout subgroup members
+    # Then: An exception is thrown
+    with pytest.raises(GroupChatDoesNotExistError) as ex:
+        await shout_subgroup_members(db, non_existent_group_chat, "Archery")
+
+    assert str(non_existent_group_chat) in ex.value.message

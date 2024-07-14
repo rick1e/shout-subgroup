@@ -1,5 +1,5 @@
 import logging
-from typing import List, Type
+from typing import Type
 
 from sqlalchemy.orm import Session
 from telegram import Update
