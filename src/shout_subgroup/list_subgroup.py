@@ -12,6 +12,36 @@ from shout_subgroup.repository import find_all_subgroups_in_group_chat
 from shout_subgroup.utils import is_group_chat
 
 
+async def _handle_list_subgroups(update: Update, db: Session, telegram_group_chat_id: int):
+    """
+       Handles the listing of subgroups for a given Telegram group chat.
+
+       Args:
+           update (Update): The update object from the Telegram bot.
+           db (Session): The SQLAlchemy session object.
+           telegram_group_chat_id (int): The ID of the Telegram group chat.
+
+       Returns:
+           List[str]: A list of subgroup names.
+
+       Raises:
+           NotGroupChatError: If the provided chat ID is not a group chat.
+           SubGroupExistsError: If a subgroup already exists for the provided chat ID and name.
+       """
+    subgroups = await list_subgroups(db, telegram_group_chat_id)
+
+    if not subgroups:
+        await update.message.reply_text(f"There are no subgroups in this chat")
+        return
+
+    # "mock-subgroup-1, mock-subgroup-2, mock-subgroup-3"
+    subgroups_names = [sub.name for sub in subgroups]
+    joined_subgroup_names = ", ".join(subgroups_names)
+
+    await update.message.reply_text(f"Here are the subgroups for this chat: {joined_subgroup_names}")
+    return
+
+
 async def list_subgroups(db: Session, telegram_group_chat_id: int) -> list[Type[SubgroupModel]]:
     # Guard Clauses
     if not await is_group_chat(telegram_group_chat_id):
@@ -22,6 +52,11 @@ async def list_subgroups(db: Session, telegram_group_chat_id: int) -> list[Type[
     # Get all the subgroups for the group chat
     subgroups = await find_all_subgroups_in_group_chat(db, telegram_group_chat_id)
     return subgroups
+
+
+async def _handle_list_subgroup_members(update: Update, db: Session, telegram_group_chat_id: int, subgroup_name: str):
+    await update.message.reply_text(f"MOCK SUBGROUP RESPONSE. Subgroup name = {subgroup_name}")
+    pass
 
 
 async def list_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -35,19 +70,18 @@ async def list_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TY
     :return:
     """
 
+    args = context.args
+
+    # If they provide the subgroup name, then we'll list the members
+    # Else: default to listing all the subgroups
+    chat_id = update.effective_chat.id
+
     try:
-        subgroups = await list_subgroups(session, update.effective_chat.id)
-
-        if not subgroups:
-            await update.message.reply_text(f"There are no subgroups in this chat")
-            return
-
-        # "mock-subgroup-1, mock-subgroup-2, mock-subgroup-3"
-        subgroups_names = [sub.name for sub in subgroups]
-        joined_subgroup_names = ", ".join(subgroups_names)
-
-        await update.message.reply_text(f"Here are the subgroups for this chat: {joined_subgroup_names}")
-        return
+        if len(args) == 1:
+            subgroup_name = args[0]
+            await _handle_list_subgroup_members(update, session, chat_id, subgroup_name)
+        else:
+            await _handle_list_subgroups(update, session, chat_id)
 
     except NotGroupChatError:
         await update.message.reply_text("Sorry, you can only list subgroups in group chats.")
