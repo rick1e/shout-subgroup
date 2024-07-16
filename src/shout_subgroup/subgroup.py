@@ -51,7 +51,7 @@ async def create_subgroup(db: Session,
     return created_subgroup
 
 
-async def create_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Handles the create subgroup command.
     This function should not handle business logic,
