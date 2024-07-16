@@ -14,6 +14,13 @@ from shout_subgroup.repository import (find_subgroup_by_telegram_group_chat_id_a
 from shout_subgroup.utils import usernames_valid, is_group_chat
 
 
+async def _handle_create_subgroup(db, update, subgroup_name, usernames):
+    subgroup = await create_subgroup(db, update.effective_chat, subgroup_name, usernames)
+    subgroup_usernames = [user.username for user in subgroup.users]
+    await update.message.reply_text(f"Subgroup {subgroup.name} was created with users {subgroup_usernames}")
+    return
+
+
 async def create_subgroup(db: Session,
                           telegram_chat: Chat,
                           subgroup_name: str,
@@ -50,9 +57,22 @@ async def create_subgroup(db: Session,
     return created_subgroup
 
 
-async def does_subgroup_exist(db: Session, telegram_group_chat_id: int, subgroup_name: str) -> bool:
+async def _handle_add_users_to_existing_subgroup(db: Session, update: Update, subgroup_name: str, usernames: set[str]):
+    subgroup: SubgroupModel = await add_users_to_existing_subgroup(db, subgroup_name, usernames)
+    await update.message.reply_text(f"Mock reply when subgroup {subgroup.name} already exists")
+    return
 
-    # TODO: Add test
+
+# TODO: Add test
+def add_users_to_existing_subgroup(db: Session, subgroup_name: str, usernames: set[str]) -> SubgroupModel:
+    # Check if all users are in the system
+    # Find all the users who aren't in the group
+    # Add missing users to the group
+    return None
+
+
+# TODO: Add test
+async def does_subgroup_exist(db: Session, telegram_group_chat_id: int, subgroup_name: str) -> bool:
     if not await is_group_chat(telegram_group_chat_id):
         msg = f"Can't list subgroups because telegram chat id {telegram_group_chat_id} is not a group chat."
         logging.info(msg)
@@ -97,13 +117,10 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
         is_existing_subgroup = await does_subgroup_exist(session, chat_id, subgroup_name)
         if is_existing_subgroup:
-            # TODO: implement service logic
-            await update.message.reply_text(f"Mock reply when subgroup {subgroup_name} already exists")
+            await _handle_add_users_to_existing_subgroup(session, update, subgroup_name, usernames)
             return
         else:
-            subgroup = await create_subgroup(session, update.effective_chat, subgroup_name, usernames)
-            subgroup_usernames = [user.username for user in subgroup.users]
-            await update.message.reply_text(f"Subgroup {subgroup.name} was created with users {subgroup_usernames}")
+            await _handle_create_subgroup(session, update, subgroup_name, usernames)
             return
 
     except NotGroupChatError:
