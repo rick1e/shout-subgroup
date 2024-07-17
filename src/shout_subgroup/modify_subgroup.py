@@ -88,17 +88,13 @@ async def add_users_to_existing_subgroup(
         # At this point we should have the subgroup, an error occurred if we hit this code
         msg = f"Subgroup {subgroup_name} should exist for telegram group chat id {telegram_chat_id}."
         logging.exception(msg)
-        # TODO: Add test
         raise SubGroupDoesNotExistsError(msg)
 
     # If we can't find all the users, then it means we have not saved them yet.
     users_to_be_added = await find_users_by_usernames(db, usernames)
     if len(users_to_be_added) != len(usernames):
-        # TODO: Add test
         raise UserDoesNotExistsError("All the usernames are not in the database.")
 
-    # TODO: Add test new users
-    # TODO: Add test with existing users
     # Find all the users who aren't in the group, then add them
     for user in users_to_be_added:
         # How Equivalency is Checked:
