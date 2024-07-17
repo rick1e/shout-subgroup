@@ -5,7 +5,8 @@ from telegram import Update, Chat
 from telegram.ext import ContextTypes
 
 from shout_subgroup.database import session
-from shout_subgroup.exceptions import NotGroupChatError, SubGroupExistsError, UserDoesNotExistsError
+from shout_subgroup.exceptions import NotGroupChatError, SubGroupExistsError, UserDoesNotExistsError, \
+    SubGroupDoesNotExistsError
 from shout_subgroup.models import SubgroupModel
 from shout_subgroup.repository import (find_subgroup_by_telegram_group_chat_id_and_subgroup_name,
                                        find_group_chat_by_telegram_group_chat_id, find_users_by_usernames,
@@ -16,8 +17,9 @@ from shout_subgroup.utils import usernames_valid, is_group_chat
 
 async def _handle_create_subgroup(db, update, subgroup_name, usernames):
     subgroup = await create_subgroup(db, update.effective_chat, subgroup_name, usernames)
-    subgroup_usernames = [user.username for user in subgroup.users]
-    await update.message.reply_text(f"Subgroup {subgroup.name} was created with users {subgroup_usernames}")
+    subgroup_usernames = [f"@{user.username}" for user in subgroup.users]
+    joined_usernames = ", ".join(subgroup_usernames)
+    await update.message.reply_text(f"Subgroup {subgroup.name} was created with users {joined_usernames}")
     return
 
 
@@ -57,18 +59,62 @@ async def create_subgroup(db: Session,
     return created_subgroup
 
 
-async def _handle_add_users_to_existing_subgroup(db: Session, update: Update, subgroup_name: str, usernames: set[str]):
-    subgroup: SubgroupModel = await add_users_to_existing_subgroup(db, subgroup_name, usernames)
-    await update.message.reply_text(f"Mock reply when subgroup {subgroup.name} already exists")
+async def _handle_add_users_to_existing_subgroup(
+        db: Session,
+        update: Update,
+        subgroup_name: str,
+        usernames: set[str]
+) -> None:
+    subgroup: SubgroupModel = await add_users_to_existing_subgroup(
+        db,
+        update.effective_chat.id,
+        subgroup_name,
+        usernames
+    )
+    subgroup_usernames = [f"@{user.username}" for user in subgroup.users]
+    joined_usernames = ", ".join(subgroup_usernames)
+    await update.message.reply_text(f"Subgroup {subgroup.name} was updated with users {joined_usernames}")
     return
 
 
-# TODO: Add test
-def add_users_to_existing_subgroup(db: Session, subgroup_name: str, usernames: set[str]) -> SubgroupModel:
-    # Check if all users are in the system
-    # Find all the users who aren't in the group
-    # Add missing users to the group
-    return None
+async def add_users_to_existing_subgroup(
+        db: Session,
+        telegram_chat_id: int,
+        subgroup_name: str,
+        usernames: set[str]
+) -> SubgroupModel:
+    subgroup = await find_subgroup_by_telegram_group_chat_id_and_subgroup_name(db, telegram_chat_id, subgroup_name)
+    if not subgroup:
+        # At this point we should have the subgroup, an error occurred if we hit this code
+        msg = f"Subgroup {subgroup_name} should exist for telegram group chat id {telegram_chat_id}."
+        logging.exception(msg)
+        # TODO: Add test
+        raise SubGroupDoesNotExistsError(msg)
+
+    # If we can't find all the users, then it means we have not saved them yet.
+    users_to_be_added = await find_users_by_usernames(db, usernames)
+    if len(users_to_be_added) != len(usernames):
+        # TODO: Add test
+        raise UserDoesNotExistsError("All the usernames are not in the database.")
+
+    # TODO: Add test new users
+    # TODO: Add test with existing users
+    # Find all the users who aren't in the group, then add them
+    for user in users_to_be_added:
+        # How Equivalency is Checked:
+        # __eq__ Method:
+        # SQLAlchemy model instances, like those created with the `UserModel`, have an `__eq__` method
+        # that checks equivalency based on the primary key by default.
+        # This means that two instances of `UserModel` are considered equal
+        # if their primary key (`user_id`) values are the same.
+        if user not in subgroup.users:
+            subgroup.users.append(user)
+
+    # Commit the transaction
+    db.commit()
+    db.refresh(subgroup)
+
+    return subgroup
 
 
 # TODO: Add test
@@ -136,6 +182,10 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         msg = (f"We don't have a record for some of the users. "
                f"We can only add users we know about. "
                f"Please tell some or all the users to send a message to this chat.")
+        await update.message.reply_text(msg)
+
+    except SubGroupDoesNotExistsError:
+        msg = f"Whoops 🧐, we couldn't find subgroup {subgroup_name}. Something went wrong on our side."
         await update.message.reply_text(msg)
 
     except Exception:
