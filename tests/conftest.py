@@ -15,8 +15,11 @@ def db():
     Base.metadata.create_all(bind=engine)
 
     session = SessionLocal()
-    yield session
-
-    # Close the session and drop all tables
-    session.close()
+    
+    try:
+        yield session
+    finally:
+        # Close the session and drop all tables
+        session.close()
+    
     Base.metadata.drop_all(bind=engine)
