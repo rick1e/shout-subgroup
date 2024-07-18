@@ -3,7 +3,7 @@ from unittest.mock import Mock
 import pytest
 from sqlalchemy.orm import Session
 
-from shout_subgroup.create_subgroup import create_subgroup
+from shout_subgroup.modify_subgroup import create_subgroup
 from test_helpers import create_test_user, create_test_group_chat
 
 
