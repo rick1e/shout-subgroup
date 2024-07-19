@@ -1,12 +1,12 @@
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 
 from shout_subgroup.models import Base
 
 # Create an SQLite in-memory database and a session factory
 engine = create_engine('sqlite:///:memory:', echo=True)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 
 
 @pytest.fixture
