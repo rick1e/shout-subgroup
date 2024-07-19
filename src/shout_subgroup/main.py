@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler
 
 from shout import shout_handler
-from modify_subgroup import subgroup_handler
+from modify_subgroup import subgroup_handler, remove_subgroup_member_handler
 from shout_subgroup.list_subgroup import list_subgroup_handler
 
 # Your bot's token
@@ -18,6 +18,7 @@ def main() -> None:
     app.add_handler(CommandHandler("shout", shout_handler))
     app.add_handler(CommandHandler("group", subgroup_handler))
     app.add_handler(CommandHandler("list", list_subgroup_handler))
+    app.add_handler(CommandHandler("kick", remove_subgroup_member_handler))
 
     app.run_polling()
 
