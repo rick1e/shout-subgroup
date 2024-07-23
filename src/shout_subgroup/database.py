@@ -14,7 +14,8 @@ session = Session()
 
 # Create users
 richie = UserModel(telegram_user_id=12345, username="ashcir", first_name="Richie", last_name="Doe")
-alrick = UserModel(telegram_user_id=67890, username="alrickb", first_name="Alrick", last_name="Rain")
+# alrick = UserModel(telegram_user_id=67890, username="alrickb", first_name="Alrick", last_name="Rain")
+alrick = UserModel(telegram_user_id=67890, username="alrick", first_name="Alrick", last_name="Rain")
 
 session.add(richie)
 session.add(alrick)

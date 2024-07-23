@@ -6,7 +6,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, filters, MessageHan
 from shout import shout_handler
 from modify_subgroup import subgroup_handler, remove_subgroup_member_handler
 from shout_subgroup.list_subgroup import list_subgroup_handler
-from listen import listen_for_messages_handler
+from group_chat_listener import listen_for_messages_handler
 
 # Your bot's token
 load_dotenv()
