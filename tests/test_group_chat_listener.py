@@ -93,6 +93,30 @@ async def test_create_group_chat_and_add_user_if_both_non_existent(db: Session):
     telegram_group_chat_name = "Group Chat"
     telegram_group_chat_description = "Test Chatting"
 
+    initial_group_chat_users = [john, jane]
+    group_chat = create_test_group_chat(db, telegram_group_chat_id, telegram_group_chat_name, initial_group_chat_users)
+
+    # But: The user is already in the group chat
+    telegram_chat = Mock()
+    telegram_chat.id = telegram_group_chat_id
+    telegram_chat.title = telegram_group_chat_name
+    telegram_chat.description = telegram_group_chat_description
+
+    # When: The listener determines this
+    added_user = await add_user_to_group_chat(db, telegram_chat, john)
+    # Then: The user should not be added to the group chat
+    assert added_user is None
+
+
+@pytest.mark.asyncio
+async def test_create_group_chat_and_add_user_if_both_non_existent(db: Session):
+    # Given: A group chat doesn't exists
+    john = create_test_user(db, telegram_user_id=12345, username="johndoe", first_name="John", last_name="Doe")
+    jane = create_test_user(db, telegram_user_id=67890, username="janedoe", first_name="Jane", last_name="Doe")
+
+    telegram_group_chat_id = -123456789
+    telegram_group_chat_name = "Group Chat"
+    telegram_group_chat_description = "Test Chatting"
     # And: We don't have a user
     telegram_chat = Mock()
     telegram_chat.id = telegram_group_chat_id
