@@ -82,6 +82,7 @@ async def find_group_chat_by_telegram_group_chat_id(db: Session, telegram_group_
     result = db.execute(stmt).scalars().first()
     return result
 
+
 async def insert_user(
         db: Session,
         user: UserModel
@@ -108,6 +109,43 @@ async def insert_subgroup(
     db.commit()
     db.refresh(new_subgroup)
     return new_subgroup
+
+
+async def delete_subgroup(
+        db: Session,
+        telegram_group_chat_id: int,
+        subgroup_name: str,
+) -> bool:
+    """
+    Hard deletes a subgroup from the database.
+    This delete is a cascading delete, meaning
+    if there are users associated with the subgroup,
+    the associations will be removed prior to the deletion.
+    :param db:
+    :param telegram_group_chat_id:
+    :param subgroup_name:
+    :return:
+    """
+
+    subgroup = await find_subgroup_by_telegram_group_chat_id_and_subgroup_name(
+        db,
+        telegram_group_chat_id,
+        subgroup_name
+    )
+
+    if not subgroup:
+        return False
+
+    # This is a cascading delete.
+    # We'll remove the users in the subgroup prior to deletion
+    subgroup.users.clear()
+    db.commit()
+
+    # Delete the subgroup
+    db.delete(subgroup)
+    db.commit()
+
+    return True
 
 
 async def insert_group_chat(db: Session, telegram_chat: Chat) -> GroupChatModel:
