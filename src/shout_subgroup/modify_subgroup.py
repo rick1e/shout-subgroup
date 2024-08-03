@@ -12,7 +12,7 @@ from shout_subgroup.repository import (find_subgroup_by_telegram_group_chat_id_a
                                        find_group_chat_by_telegram_group_chat_id, find_users_by_usernames,
                                        insert_subgroup,
                                        insert_group_chat)
-from shout_subgroup.utils import usernames_valid, is_group_chat
+from shout_subgroup.utils import usernames_valid, is_group_chat, format_telegram_usernames
 
 
 async def _handle_create_subgroup(db, update, subgroup_name, usernames):
@@ -73,7 +73,7 @@ async def _handle_add_users_to_existing_subgroup(
     )
     subgroup_usernames = [f"@{user.username}" for user in subgroup.users]
     joined_usernames = ", ".join(subgroup_usernames)
-    await update.message.reply_text(f"Subgroup {subgroup.name} now has the following members {joined_usernames}")
+    await update.message.reply_text(f"Subgroup '{subgroup.name}' now has the following members {joined_usernames}")
     return
 
 
@@ -150,7 +150,9 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     chat_id = update.effective_chat.id
     subgroup_name = args[0]
 
-    usernames = {name.replace("@", "") for name in set(args[1:])}  # removing mention from args for usernames
+    unformatted_usernames = set(args[1:])
+    usernames = await format_telegram_usernames(unformatted_usernames, update.effective_user)
+
     if not await usernames_valid(usernames):
         await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
 
@@ -248,12 +250,19 @@ async def remove_subgroup_member_handler(update: Update, context: ContextTypes.D
 
     subgroup_name = args[0]
 
-    usernames = {name.replace("@", "") for name in set(args[1:])}  # removing mention from args for usernames
+    unformatted_usernames = set(args[1:])
+    usernames = await format_telegram_usernames(unformatted_usernames, update.effective_user)
+
     if not await usernames_valid(usernames):
         await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
-    try:
 
-        subgroup = await remove_users_from_existing_subgroup(session, update.effective_chat.id, subgroup_name, usernames)
+    try:
+        subgroup = await remove_users_from_existing_subgroup(
+            session,
+            update.effective_chat.id,
+            subgroup_name,
+            usernames
+        )
 
         subgroup_usernames = [f"@{user.username}" for user in subgroup.users]
         joined_usernames = ", ".join(subgroup_usernames)
