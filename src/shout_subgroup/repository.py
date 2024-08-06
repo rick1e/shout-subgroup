@@ -73,6 +73,24 @@ async def find_users_by_usernames(db: Session, usernames: set[str]) -> Sequence[
     return result
 
 
+async def find_user_by_username(db: Session, username: str) -> UserModel | None:
+    stmt = (
+        select(UserModel)
+        .where(UserModel.username == username)
+    )
+    result = db.execute(stmt).scalars().first()
+    return result
+
+
+async def find_user_by_telegram_user_id(db: Session, telegram_user_id: int) -> UserModel | None:
+    stmt = (
+        select(UserModel)
+        .where(UserModel.telegram_user_id == telegram_user_id)
+    )
+    result = db.execute(stmt).scalars().first()
+    return result
+
+
 async def find_group_chat_by_telegram_group_chat_id(db: Session, telegram_group_chat_id: int) -> GroupChatModel | None:
     stmt = (
         select(GroupChatModel)
