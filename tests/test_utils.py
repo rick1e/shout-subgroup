@@ -3,7 +3,8 @@ from unittest.mock import Mock
 import pytest
 from sqlalchemy.orm import Session
 
-from shout_subgroup.utils import is_group_chat, format_telegram_usernames, get_user_id_from_mention
+from shout_subgroup.utils import is_group_chat, format_telegram_usernames, get_user_id_from_mention, \
+    UserIdMentionMapping
 from test_helpers import create_test_user
 
 
@@ -54,7 +55,7 @@ async def test_get_user_id_from_mention_with_username(db: Session):
     result = await get_user_id_from_mention(db, mention)
 
     # Then: The correct user_id is found
-    assert result == john.user_id
+    assert result == UserIdMentionMapping(mention=mention, user_id=john.user_id)
 
 
 @pytest.mark.asyncio
@@ -69,7 +70,7 @@ async def test_get_user_id_from_mention_with_username_non_existent_user(db: Sess
     result = await get_user_id_from_mention(db, mention)
 
     # Then: The no user_id is found
-    assert not result
+    assert result == UserIdMentionMapping(mention=mention, user_id=None)
 
 
 @pytest.mark.asyncio
@@ -84,7 +85,7 @@ async def test_get_user_id_from_mention_with_markdown(db: Session):
     result = await get_user_id_from_mention(db, mention)
 
     # Then: The correct user_id is found
-    assert result == jane.user_id
+    assert result == UserIdMentionMapping(mention=mention, user_id=jane.user_id)
 
 
 @pytest.mark.asyncio
@@ -99,4 +100,4 @@ async def test_get_user_id_from_mention_with_markdown_non_existent_user(db: Sess
     result = await get_user_id_from_mention(db, mention)
 
     # Then: The correct user_id is found
-    assert not result
+    assert result == UserIdMentionMapping(mention=mention, user_id=None)

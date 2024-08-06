@@ -1,4 +1,5 @@
 import re
+from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 from telegram import User
@@ -59,11 +60,23 @@ def _replace_me_mention_with_username(username: str, telegram_user: User) -> str
     return telegram_user.username.lower() if username.lower() == "me" else username
 
 
-async def get_user_id_from_mention(db: Session, username_or_markdown: str) -> int | None:
-    if username_or_markdown[0] == "@":
-        return await _convert_username_to_user_id(db, username_or_markdown[1:])
+@dataclass
+class UserIdMentionMapping:
+    """
+    Convenient class for tying user ids to the mentions
+    """
+    mention: str
+    user_id: int | None
 
-    return await _convert_markdown_to_user_id(db, username_or_markdown)
+
+async def get_user_id_from_mention(db: Session, username_or_markdown: str) -> UserIdMentionMapping:
+    user_id = (
+        await _convert_username_to_user_id(db, username_or_markdown[1:])
+        if username_or_markdown[0] == "@"
+        else await _convert_markdown_to_user_id(db, username_or_markdown)
+    )
+
+    return UserIdMentionMapping(user_id=user_id, mention=username_or_markdown)
 
 
 async def _convert_username_to_user_id(db: Session, telegram_username: str) -> int | None:

@@ -23,6 +23,54 @@ async def _handle_create_subgroup(db, update, subgroup_name, usernames):
     return
 
 
+async def _handle_create_subgroup_v2(db: Session, update: Update, subgroup_name: str, user_ids: set[int]):
+    subgroup = await create_subgroup_v2(db, update.effective_chat, subgroup_name, user_ids)
+
+    # TODO: Create util that will map from user id to replay name
+    subgroup_usernames = [f"@{user.username}" for user in subgroup.users]
+    joined_usernames = ", ".join(subgroup_usernames)
+    await update.message.reply_text(f"Subgroup {subgroup.name} was created with users {joined_usernames}")
+    return
+
+
+async def create_subgroup_v2(
+        db: Session,
+        telegram_chat: Chat,
+        subgroup_name: str,
+        usernames: set[int]
+) -> SubgroupModel:
+    telegram_chat_id = telegram_chat.id
+    if not await is_group_chat(telegram_chat_id):
+        msg = f"Can't create subgroup because telegram chat id {telegram_chat_id} is not a group chat."
+        logging.info(msg)
+        raise NotGroupChatError(msg)
+
+    # If the code reaches to this point the telegram_chat_id has to be a telegram group chat id
+    subgroup = await find_subgroup_by_telegram_group_chat_id_and_subgroup_name(db, telegram_chat_id, subgroup_name)
+    if subgroup:
+        msg = f"Subgroup {subgroup_name} already exists for telegram group chat id {telegram_chat_id}."
+        logging.info(msg)
+        raise SubGroupExistsError(msg)
+
+    users_to_be_added = await find_users_by_usernames(db, usernames)
+    # If we can't find all the users, then it means we have not
+    # saved them yet. The user would have to type a message for the
+    # bot to see.
+    if len(users_to_be_added) != len(usernames):
+        raise UserDoesNotExistsError("All the usernames are not in the database.")
+
+    # Business logic
+    group_chat = await find_group_chat_by_telegram_group_chat_id(db, telegram_chat_id)
+    # If the group chat doesn't exist in our system yet, we'll have to create it.
+    if not group_chat:
+        created_group_chat = await insert_group_chat(db, telegram_chat)
+        created_subgroup = await insert_subgroup(db, subgroup_name, created_group_chat.group_chat_id, users_to_be_added)
+        return created_subgroup
+
+    created_subgroup = await insert_subgroup(db, subgroup_name, group_chat.group_chat_id, users_to_be_added)
+    return created_subgroup
+
+
 async def create_subgroup(db: Session,
                           telegram_chat: Chat,
                           subgroup_name: str,
@@ -152,7 +200,7 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     user_mentions = set(args[1:])
     # TODO: Use this instead of usernames to find the users
-    users_ids = [await get_user_id_from_mention(session, mention) for mention in user_mentions]
+    users_ids = {await get_user_id_from_mention(session, mention) for mention in user_mentions}
 
     usernames = await format_telegram_usernames(user_mentions, update.effective_user)
 
@@ -166,7 +214,8 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await _handle_add_users_to_existing_subgroup(session, update, subgroup_name, usernames)
             return
         else:
-            await _handle_create_subgroup(session, update, subgroup_name, usernames)
+            # await _handle_create_subgroup(session, update, subgroup_name, usernames)
+            await _handle_create_subgroup_v2(session, update, subgroup_name, users_ids)
             return
 
     except NotGroupChatError:
