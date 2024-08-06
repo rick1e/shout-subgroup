@@ -61,7 +61,7 @@ def _replace_me_mention_with_username(username: str, telegram_user: User) -> str
 
 async def get_user_id_from_mention(db: Session, username_or_markdown: str) -> int | None:
     if username_or_markdown[0] == "@":
-        return await _convert_username_to_user_id(db, username_or_markdown)
+        return await _convert_username_to_user_id(db, username_or_markdown[1:])
 
     return await _convert_markdown_to_user_id(db, username_or_markdown)
 
