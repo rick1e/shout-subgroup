@@ -59,7 +59,14 @@ def _replace_me_mention_with_username(username: str, telegram_user: User) -> str
     return telegram_user.username.lower() if username.lower() == "me" else username
 
 
-async def convert_username_to_user_id(db: Session, telegram_username: str) -> int | None:
+async def get_user_id_from_mention(db: Session, username_or_markdown: str) -> int | None:
+    if username_or_markdown[0] == "@":
+        return await _convert_username_to_user_id(db, username_or_markdown)
+
+    return await _convert_markdown_to_user_id(db, username_or_markdown)
+
+
+async def _convert_username_to_user_id(db: Session, telegram_username: str) -> int | None:
     """
     Converts from a telegram username to our user id
     :param db:
@@ -73,7 +80,7 @@ async def convert_username_to_user_id(db: Session, telegram_username: str) -> in
     return user.user_id
 
 
-async def convert_markdown_to_user_id(db: Session, telegram_markdown_v2: str) -> int | None:
+async def _convert_markdown_to_user_id(db: Session, telegram_markdown_v2: str) -> int | None:
     """
     Convert from telegram markdown into our user id.
     E.g. [John](tg://user?id=12345678)
@@ -96,5 +103,3 @@ async def convert_markdown_to_user_id(db: Session, telegram_markdown_v2: str) ->
         return None
 
     return user.user_id
-
-

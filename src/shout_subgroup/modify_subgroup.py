@@ -12,7 +12,7 @@ from shout_subgroup.repository import (find_subgroup_by_telegram_group_chat_id_a
                                        find_group_chat_by_telegram_group_chat_id, find_users_by_usernames,
                                        insert_subgroup,
                                        insert_group_chat)
-from shout_subgroup.utils import usernames_valid, is_group_chat, format_telegram_usernames
+from shout_subgroup.utils import usernames_valid, is_group_chat, format_telegram_usernames, get_user_id_from_mention
 
 
 async def _handle_create_subgroup(db, update, subgroup_name, usernames):
@@ -150,8 +150,11 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     chat_id = update.effective_chat.id
     subgroup_name = args[0]
 
-    unformatted_usernames = set(args[1:])
-    usernames = await format_telegram_usernames(unformatted_usernames, update.effective_user)
+    user_mentions = set(args[1:])
+    # TODO: Use this instead of usernames to find the users
+    users_ids = [await get_user_id_from_mention(session, mention) for mention in user_mentions]
+
+    usernames = await format_telegram_usernames(user_mentions, update.effective_user)
 
     if not await usernames_valid(usernames):
         await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
