@@ -85,9 +85,17 @@ async def find_group_chat_by_telegram_group_chat_id(db: Session, telegram_group_
 
 async def insert_user(
         db: Session,
-        user: UserModel
+        user_id: int,
+        username: str,
+        first_name: str,
+        last_name: str
 ) -> UserModel:
-    new_user = user
+    new_user = UserModel(
+        telegram_user_id=user_id,
+        username=username,
+        first_name=first_name,
+        last_name=last_name
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -148,12 +156,17 @@ async def delete_subgroup(
     return True
 
 
-async def insert_group_chat(db: Session, telegram_chat: Chat) -> GroupChatModel:
+async def insert_group_chat(db: Session,
+                            telegram_chat_id: int,
+                            telegram_chat_title: str,
+                            telegram_chat_description: str
+                            ) -> GroupChatModel:
     new_group_chat = GroupChatModel(
-        telegram_group_chat_id=telegram_chat.id,
-        name=telegram_chat.title,
-        description=telegram_chat.description if hasattr(telegram_chat, 'description') else ""
+        telegram_group_chat_id=telegram_chat_id,
+        name=telegram_chat_title,
+        description=telegram_chat_description
     )
+
     db.add(new_group_chat)
     db.commit()
     db.refresh(new_group_chat)  # Refresh to get the ID and other generated values

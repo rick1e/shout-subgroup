@@ -33,12 +33,11 @@ async def test_add_user_if_not_in_group_chat(db: Session):
     group_chat = create_test_group_chat(db, telegram_group_chat_id, telegram_group_chat_name, initial_group_chat_users)
 
     # But: The user is not in the group chat
-    betty = UserModel(
-        telegram_user_id=87654,
-        username="betty",
-        first_name="Betty",
-        last_name="White"
-    )
+    betty = Mock()
+    betty.id = 87654
+    betty.username = "betty"
+    betty.first_name = "Betty"
+    betty.last_name = "White"
 
     telegram_chat = Mock()
     telegram_chat.id = telegram_group_chat_id
@@ -93,17 +92,27 @@ async def test_create_group_chat_and_add_user_if_both_non_existent(db: Session):
     telegram_group_chat_id = -123456789
     telegram_group_chat_name = "Group Chat"
     telegram_group_chat_description = "Test Chatting"
+
     # And: We don't have a user
     telegram_chat = Mock()
     telegram_chat.id = telegram_group_chat_id
     telegram_chat.title = telegram_group_chat_name
     telegram_chat.description = telegram_group_chat_description
+
+    current_user = Mock()
+    current_user.id = 98765
+    current_user.username = "mary"
+    current_user.first_name = "Mary"
+    current_user.last_name = "Lynn"
+
     # When: The listener determines this
-    added_user = await add_user_to_group_chat(db, telegram_chat, john)
+    added_user = await add_user_to_group_chat(db, telegram_chat, current_user)
+
     # Then: The group chat is created and the user is added
     created_group_chat = await find_group_chat_by_telegram_group_chat_id(db, telegram_group_chat_id)
     assert created_group_chat is not None
-    actual_user = next((user for user in created_group_chat.users if user.username == john.username), None)
+
+    actual_user = next((user for user in created_group_chat.users if user.username == current_user.username), None)
     assert actual_user.first_name == added_user.first_name
     assert actual_user.last_name == added_user.last_name
     assert actual_user.telegram_user_id == added_user.telegram_user_id
