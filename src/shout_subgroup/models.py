@@ -27,7 +27,7 @@ class UserModel(Base):
     __tablename__ = 'users'
     user_id = Column(String, primary_key=True, default=lambda: str(uuid4()))
     telegram_user_id = Column(Integer, nullable=False, unique=True)
-    username = Column(String, nullable=False)
+    username = Column(String, nullable=True)
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
