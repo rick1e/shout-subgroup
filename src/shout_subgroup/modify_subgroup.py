@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 from sqlalchemy.orm import Session
 from telegram import Update, Chat
@@ -16,15 +17,7 @@ from shout_subgroup.utils import usernames_valid, is_group_chat, format_telegram
     UserIdMentionMapping, get_mention_from_user_id
 
 
-async def _handle_create_subgroup(db, update, subgroup_name, usernames):
-    subgroup = await create_subgroup(db, update.effective_chat, subgroup_name, usernames)
-    subgroup_usernames = [f"@{user.username}" for user in subgroup.users]
-    joined_usernames = ", ".join(subgroup_usernames)
-    await update.message.reply_text(f"Subgroup {subgroup.name} was created with users {joined_usernames}")
-    return
-
-
-async def _handle_create_subgroup_v2(
+async def _handle_create_subgroup(
         db: Session,
         update: Update,
         subgroup_name: str,
@@ -33,13 +26,17 @@ async def _handle_create_subgroup_v2(
     user_ids: set[str | None] = {id_and_mention.user_id for id_and_mention in users_ids_and_mentions}
     subgroup = await create_subgroup_v2(db, update.effective_chat, subgroup_name, user_ids)
 
-    # TODO: Create util that will map from user id to replay name
-    subgroup_mentions = [
+    # Note: This list shouldn't have a None value
+    # b/c we'd have thrown a UserDoesNotExistsError during create_subgroup_v2
+    subgroup_mentions: list[str | None] = [
         await get_mention_from_user_id(user.user_id, users_ids_and_mentions)
         for user in subgroup.users
     ]
     joined_usernames = ", ".join(subgroup_mentions)
-    await update.message.reply_text(f"Subgroup {subgroup.name} was created with users {joined_usernames}")
+    await update.message.reply_text(
+        f"Subgroup {subgroup.name} was created with users {joined_usernames}",
+        parse_mode="markdown"
+    )
     return
 
 
@@ -215,8 +212,12 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     chat_id = update.effective_chat.id
     subgroup_name = args[0]
 
-    user_mentions = set(args[1:])
-    # TODO: Use this instead of usernames to find the users
+    # user_mentions = set(args[1:])
+    # The text markdown contains the username if it exists.
+    # When a user doesn't have a username, telegram uses an url
+    # [John](tg://user?id=12345678). We'll pull the user_id
+    # either from the username or the URL
+    user_mentions = set(update.effective_message.text_markdown_v2.split()[2:])
     users_ids_and_mentions: set[UserIdMentionMapping] = {
         await get_user_id_from_mention(session, mention)
         for mention in user_mentions
@@ -234,8 +235,7 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await _handle_add_users_to_existing_subgroup(session, update, subgroup_name, usernames)
             return
         else:
-            # await _handle_create_subgroup(session, update, subgroup_name, usernames)
-            await _handle_create_subgroup_v2(session, update, subgroup_name, users_ids_and_mentions)
+            await _handle_create_subgroup(session, update, subgroup_name, users_ids_and_mentions)
             return
 
     except NotGroupChatError:
