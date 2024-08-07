@@ -60,13 +60,13 @@ def _replace_me_mention_with_username(username: str, telegram_user: User) -> str
     return telegram_user.username.lower() if username.lower() == "me" else username
 
 
-@dataclass
+@dataclass(frozen=True, eq=True)
 class UserIdMentionMapping:
     """
     Convenient class for tying user ids to the mentions
     """
     mention: str
-    user_id: int | None
+    user_id: str | None
 
 
 async def get_user_id_from_mention(db: Session, username_or_markdown: str) -> UserIdMentionMapping:
@@ -116,3 +116,20 @@ async def _convert_markdown_to_user_id(db: Session, telegram_markdown_v2: str) -
         return None
 
     return user.user_id
+
+
+async def get_mention_from_user_id(
+        user_id: str,
+        users_ids_and_mentions: set[UserIdMentionMapping]) -> str | None:
+    """
+    Find the UserIdMention mapping for a given user id
+    :param user_id:
+    :param users_ids_and_mentions:
+    :return: the mapping if found, None if not
+    """
+
+    for mapping in users_ids_and_mentions:
+        if mapping.user_id == user_id:
+            return mapping.mention
+
+    return None

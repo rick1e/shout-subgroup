@@ -11,8 +11,9 @@ from shout_subgroup.models import SubgroupModel
 from shout_subgroup.repository import (find_subgroup_by_telegram_group_chat_id_and_subgroup_name,
                                        find_group_chat_by_telegram_group_chat_id, find_users_by_usernames,
                                        insert_subgroup,
-                                       insert_group_chat)
-from shout_subgroup.utils import usernames_valid, is_group_chat, format_telegram_usernames, get_user_id_from_mention
+                                       insert_group_chat, find_users_by_user_ids)
+from shout_subgroup.utils import usernames_valid, is_group_chat, format_telegram_usernames, get_user_id_from_mention, \
+    UserIdMentionMapping, get_mention_from_user_id
 
 
 async def _handle_create_subgroup(db, update, subgroup_name, usernames):
@@ -23,12 +24,21 @@ async def _handle_create_subgroup(db, update, subgroup_name, usernames):
     return
 
 
-async def _handle_create_subgroup_v2(db: Session, update: Update, subgroup_name: str, user_ids: set[int]):
+async def _handle_create_subgroup_v2(
+        db: Session,
+        update: Update,
+        subgroup_name: str,
+        users_ids_and_mentions: set[UserIdMentionMapping]
+):
+    user_ids: set[str | None] = {id_and_mention.user_id for id_and_mention in users_ids_and_mentions}
     subgroup = await create_subgroup_v2(db, update.effective_chat, subgroup_name, user_ids)
 
     # TODO: Create util that will map from user id to replay name
-    subgroup_usernames = [f"@{user.username}" for user in subgroup.users]
-    joined_usernames = ", ".join(subgroup_usernames)
+    subgroup_mentions = [
+        await get_mention_from_user_id(user.user_id, users_ids_and_mentions)
+        for user in subgroup.users
+    ]
+    joined_usernames = ", ".join(subgroup_mentions)
     await update.message.reply_text(f"Subgroup {subgroup.name} was created with users {joined_usernames}")
     return
 
@@ -37,7 +47,7 @@ async def create_subgroup_v2(
         db: Session,
         telegram_chat: Chat,
         subgroup_name: str,
-        usernames: set[int]
+        user_ids: set[int | None]
 ) -> SubgroupModel:
     telegram_chat_id = telegram_chat.id
     if not await is_group_chat(telegram_chat_id):
@@ -52,18 +62,25 @@ async def create_subgroup_v2(
         logging.info(msg)
         raise SubGroupExistsError(msg)
 
-    users_to_be_added = await find_users_by_usernames(db, usernames)
-    # If we can't find all the users, then it means we have not
-    # saved them yet. The user would have to type a message for the
-    # bot to see.
-    if len(users_to_be_added) != len(usernames):
+    if None in user_ids:
+        # If we can't find all the users, then it means we have not
+        # saved them yet. The user would have to type a message for the
+        # bot to see.
         raise UserDoesNotExistsError("All the usernames are not in the database.")
+
+    users_to_be_added = await find_users_by_user_ids(db, user_ids)
 
     # Business logic
     group_chat = await find_group_chat_by_telegram_group_chat_id(db, telegram_chat_id)
     # If the group chat doesn't exist in our system yet, we'll have to create it.
     if not group_chat:
-        created_group_chat = await insert_group_chat(db, telegram_chat)
+        created_group_chat = await insert_group_chat(
+            db,
+            telegram_chat.id,
+            telegram_chat.title,
+            telegram_chat.description
+        )
+
         created_subgroup = await insert_subgroup(db, subgroup_name, created_group_chat.group_chat_id, users_to_be_added)
         return created_subgroup
 
@@ -200,7 +217,10 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     user_mentions = set(args[1:])
     # TODO: Use this instead of usernames to find the users
-    users_ids = {await get_user_id_from_mention(session, mention) for mention in user_mentions}
+    users_ids_and_mentions: set[UserIdMentionMapping] = {
+        await get_user_id_from_mention(session, mention)
+        for mention in user_mentions
+    }
 
     usernames = await format_telegram_usernames(user_mentions, update.effective_user)
 
@@ -215,7 +235,7 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             return
         else:
             # await _handle_create_subgroup(session, update, subgroup_name, usernames)
-            await _handle_create_subgroup_v2(session, update, subgroup_name, users_ids)
+            await _handle_create_subgroup_v2(session, update, subgroup_name, users_ids_and_mentions)
             return
 
     except NotGroupChatError:

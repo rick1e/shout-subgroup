@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from shout_subgroup.utils import is_group_chat, format_telegram_usernames, get_user_id_from_mention, \
-    UserIdMentionMapping
+    UserIdMentionMapping, get_mention_from_user_id
 from test_helpers import create_test_user
 
 
@@ -101,3 +101,42 @@ async def test_get_user_id_from_mention_with_markdown_non_existent_user(db: Sess
 
     # Then: The correct user_id is found
     assert result == UserIdMentionMapping(mention=mention, user_id=None)
+
+
+@pytest.mark.asyncio
+async def test_get_mention_from_user_id_single_match():
+
+    # Given: We have mappings
+    user_id = "123"
+    mention = "@user123"
+
+    mapping_a = UserIdMentionMapping(user_id=user_id, mention=mention)
+    mapping_b = UserIdMentionMapping(user_id="876", mention="@user876")
+
+    users_ids_and_mentions = {mapping_a, mapping_b}
+
+    # When: We get the mention from the id
+    result = await get_mention_from_user_id(user_id, users_ids_and_mentions)
+
+    # Then: it finds the mapping
+    assert result == mapping_a.mention
+
+
+@pytest.mark.asyncio
+async def test_get_mention_from_user_id_no_match():
+
+    # Given: We have mappings
+    user_id = "123"
+    mention = "@user123"
+
+    mapping_a = UserIdMentionMapping(user_id=user_id, mention=mention)
+    mapping_b = UserIdMentionMapping(user_id="876", mention="@user876")
+
+    users_ids_and_mentions = {mapping_a, mapping_b}
+
+    # When: We get the mention from a non-existent id
+    non_existent_user_id = "abc999"
+    result = await get_mention_from_user_id(non_existent_user_id, users_ids_and_mentions)
+
+    # Then: it finds the mapping
+    assert not result
