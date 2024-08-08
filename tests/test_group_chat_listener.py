@@ -140,3 +140,45 @@ async def test_create_group_chat_and_add_user_if_both_non_existent(db: Session):
     assert actual_user.first_name == added_user.first_name
     assert actual_user.last_name == added_user.last_name
     assert actual_user.telegram_user_id == added_user.telegram_user_id
+
+
+@pytest.mark.asyncio
+async def test_add_user_to_group_throws_exception_for_non_group_chat(db: Session):
+    # Given: A group chat exists
+    john = create_test_user(db, telegram_user_id=12345, username="johndoe", first_name="John", last_name="Doe")
+    jane = create_test_user(db, telegram_user_id=67890, username="janedoe", first_name="Jane", last_name="Doe")
+
+    telegram_group_chat_id = -123456789
+    telegram_group_chat_name = "Group Chat"
+    telegram_group_chat_description = "Test Chatting"
+
+    initial_group_chat_users = [john, jane]
+    group_chat = create_test_group_chat(db, telegram_group_chat_id, telegram_group_chat_name, initial_group_chat_users)
+
+    # But: The user is not in the group chat and the chat is not a group chat
+    betty = UserModel(
+        telegram_user_id=87654,
+        username="betty",
+        first_name="Betty",
+        last_name="White"
+    )
+
+    not_telegram_group_chat_id = 123456789
+
+    telegram_chat = Mock()
+    telegram_chat.id = not_telegram_group_chat_id
+    telegram_chat.title = ""
+    telegram_chat.description = ""
+
+    # When: The listener determines this
+    
+
+    # When: We try to add the user to a not group chat
+    with pytest.raises(NotGroupChatError) as ex:
+        added_user = await add_user_to_group_chat(db, telegram_chat, betty)
+
+    # Then: The exception is thrown with correct message and the user was not added 
+    assert str(not_telegram_group_chat_id) in ex.value.message
+    actual_user = next((user for user in group_chat.users if user.username == betty.username), None)
+    assert actual_user is None
+
