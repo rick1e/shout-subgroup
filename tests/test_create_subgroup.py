@@ -30,10 +30,10 @@ async def test_create_subgroup(db: Session):
     telegram_chat.description = group_chat.description
 
     subgroup_name = "Archery"
-    usernames = {"johndoe", "janedoe"}
+    user_ids = {john.user_id, jane.user_id}
 
     # When: We add subgroup
-    subgroup = await create_subgroup(db, telegram_chat, subgroup_name, usernames)
+    subgroup = await create_subgroup(db, telegram_chat, subgroup_name, user_ids)
 
     # Then: It's added correctly
     assert subgroup.subgroup_id is not None
@@ -41,4 +41,4 @@ async def test_create_subgroup(db: Session):
     assert subgroup.group_chat_id is not None
 
     assert len(subgroup.users) == 2
-    assert set([user.username for user in subgroup.users]) == usernames
+    assert set([user.user_id for user in subgroup.users]) == user_ids
