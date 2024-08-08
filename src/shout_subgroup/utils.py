@@ -1,4 +1,10 @@
+import re
+from dataclasses import dataclass
+
+from sqlalchemy.orm import Session
 from telegram import User
+
+from shout_subgroup.repository import find_user_by_username, find_user_by_telegram_user_id
 
 
 async def usernames_valid(usernames: set[str]) -> bool:
@@ -52,3 +58,78 @@ async def format_telegram_usernames(usernames: set[str], telegram_user: User) ->
 def _replace_me_mention_with_username(username: str, telegram_user: User) -> str:
     # TODO: Update logic when we decide how to handle Users without usernames
     return telegram_user.username.lower() if username.lower() == "me" else username
+
+
+@dataclass(frozen=True, eq=True)
+class UserIdMentionMapping:
+    """
+    Convenient class for tying user ids to the mentions
+    """
+    mention: str
+    user_id: str | None
+
+
+async def get_user_id_from_mention(db: Session, username_or_markdown: str) -> UserIdMentionMapping:
+    user_id = (
+        await _convert_username_to_user_id(db, username_or_markdown[1:])
+        if username_or_markdown[0] == "@"
+        else await _convert_markdown_to_user_id(db, username_or_markdown)
+    )
+
+    return UserIdMentionMapping(user_id=user_id, mention=username_or_markdown)
+
+
+async def _convert_username_to_user_id(db: Session, telegram_username: str) -> int | None:
+    """
+    Converts from a telegram username to our user id
+    :param db:
+    :param telegram_username:
+    :return: the user id used within our system. None if user doesn't exist
+    """
+    user = await find_user_by_username(db, telegram_username)
+    if not user:
+        return None
+
+    return user.user_id
+
+
+async def _convert_markdown_to_user_id(db: Session, telegram_markdown_v2: str) -> int | None:
+    """
+    Convert from telegram markdown into our user id.
+    E.g. [John](tg://user?id=12345678)
+    :param db:
+    :param telegram_markdown_v2:
+    :return: the user id used within our system
+    """
+
+    # Regular expression to match the first name and user ID
+    pattern = r'\[(?P<firstname>[^\]]+)\]\(tg://user\?id=(?P<telegram_user_id>\d+)\)'
+
+    match = re.search(pattern, telegram_markdown_v2)
+    if not match:
+        return None
+
+    telegram_user_id = match.group('telegram_user_id')
+    user = await find_user_by_telegram_user_id(db, telegram_user_id)
+
+    if not user:
+        return None
+
+    return user.user_id
+
+
+async def get_mention_from_user_id(
+        user_id: str,
+        users_ids_and_mentions: set[UserIdMentionMapping]) -> str | None:
+    """
+    Find the UserIdMention mapping for a given user id
+    :param user_id:
+    :param users_ids_and_mentions:
+    :return: the mapping if found, None if not
+    """
+
+    for mapping in users_ids_and_mentions:
+        if mapping.user_id == user_id:
+            return mapping.mention
+
+    return None

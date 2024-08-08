@@ -15,11 +15,13 @@ session = Session()
 # Create users
 richie = UserModel(telegram_user_id=12345, username="ashcir", first_name="Richie", last_name="Doe")
 alrick = UserModel(telegram_user_id=67890, username="alrickb", first_name="Alrick", last_name="Rain")
-# Going leave it there in case i need it for testing
+donovan = UserModel(telegram_user_id=177557021, username=None, first_name="Donovan", last_name="Hail")
+# Going leave it there in case I need it for testing
 # alrick = UserModel(telegram_user_id=67890, username="alrick", first_name="Alrick", last_name="Rain")
 
 session.add(richie)
 session.add(alrick)
+session.add(donovan)
 session.commit()
 
 group_chat = GroupChatModel(telegram_group_chat_id=-4239122711, name="Group Chat 1", description="This is a group chat")
