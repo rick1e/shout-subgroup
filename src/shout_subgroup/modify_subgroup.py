@@ -5,15 +5,26 @@ from telegram import Update, Chat
 from telegram.ext import ContextTypes
 
 from shout_subgroup.database import session
-from shout_subgroup.exceptions import NotGroupChatError, SubGroupExistsError, UserDoesNotExistsError, \
+from shout_subgroup.exceptions import (
+    NotGroupChatError,
+    SubGroupExistsError,
+    UserDoesNotExistsError,
     SubGroupDoesNotExistsError
+)
 from shout_subgroup.models import SubgroupModel
 from shout_subgroup.repository import (find_subgroup_by_telegram_group_chat_id_and_subgroup_name,
                                        find_group_chat_by_telegram_group_chat_id, find_users_by_usernames,
                                        insert_subgroup,
                                        insert_group_chat, find_users_by_user_ids)
-from shout_subgroup.utils import usernames_valid, is_group_chat, replace_me_mentions, get_user_id_from_mention, \
-    UserIdMentionMapping, get_mention_from_user_id_mention_mappings, create_mention_from_user_id
+from shout_subgroup.utils import (
+    usernames_valid,
+    is_group_chat,
+    replace_me_mentions,
+    get_user_id_from_mention,
+    UserIdMentionMapping,
+    get_mention_from_user_id_mention_mappings,
+    create_mention_from_user_id
+)
 
 
 async def _handle_create_subgroup(
@@ -88,64 +99,10 @@ async def _handle_add_users_to_existing_subgroup(
         db: Session,
         update: Update,
         subgroup_name: str,
-        usernames: set[str]
-) -> None:
-    subgroup: SubgroupModel = await add_users_to_existing_subgroup(
-        db,
-        update.effective_chat.id,
-        subgroup_name,
-        usernames
-    )
-    subgroup_usernames = [f"@{user.username}" for user in subgroup.users]
-    joined_usernames = ", ".join(subgroup_usernames)
-    await update.message.reply_text(f"Subgroup '{subgroup.name}' now has the following members {joined_usernames}")
-    return
-
-
-async def add_users_to_existing_subgroup(
-        db: Session,
-        telegram_chat_id: int,
-        subgroup_name: str,
-        usernames: set[str]
-) -> SubgroupModel:
-    subgroup = await find_subgroup_by_telegram_group_chat_id_and_subgroup_name(db, telegram_chat_id, subgroup_name)
-    if not subgroup:
-        # At this point we should have the subgroup, an error occurred if we hit this code
-        msg = f"Subgroup {subgroup_name} should exist for telegram group chat id {telegram_chat_id}."
-        logging.exception(msg)
-        raise SubGroupDoesNotExistsError(msg)
-
-    # If we can't find all the users, then it means we have not saved them yet.
-    users_to_be_added = await find_users_by_usernames(db, usernames)
-    if len(users_to_be_added) != len(usernames):
-        raise UserDoesNotExistsError("All the usernames are not in the database.")
-
-    # Find all the users who aren't in the group, then add them
-    for user in users_to_be_added:
-        # How Equivalency is Checked:
-        # __eq__ Method:
-        # SQLAlchemy model instances, like those created with the `UserModel`, have an `__eq__` method
-        # that checks equivalency based on the primary key by default.
-        # This means that two instances of `UserModel` are considered equal
-        # if their primary key (`user_id`) values are the same.
-        if user not in subgroup.users:
-            subgroup.users.append(user)
-
-    # Commit the transaction
-    db.commit()
-    db.refresh(subgroup)
-
-    return subgroup
-
-
-async def _handle_add_users_to_existing_subgroup_v2(
-        db: Session,
-        update: Update,
-        subgroup_name: str,
         users_ids_and_mentions: set[UserIdMentionMapping]
 ) -> None:
     user_ids: set[str | None] = {id_and_mention.user_id for id_and_mention in users_ids_and_mentions}
-    subgroup: SubgroupModel = await add_users_to_existing_subgroup_v2(
+    subgroup: SubgroupModel = await add_users_to_existing_subgroup(
         db,
         update.effective_chat.id,
         subgroup_name,
@@ -165,7 +122,7 @@ async def _handle_add_users_to_existing_subgroup_v2(
     return
 
 
-async def add_users_to_existing_subgroup_v2(
+async def add_users_to_existing_subgroup(
         db: Session,
         telegram_chat_id: int,
         subgroup_name: str,
@@ -261,8 +218,7 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
         is_existing_subgroup = await does_subgroup_exist(session, chat_id, subgroup_name)
         if is_existing_subgroup:
-            # await _handle_add_users_to_existing_subgroup(session, update, subgroup_name, usernames)
-            await _handle_add_users_to_existing_subgroup_v2(session, update, subgroup_name, users_ids_and_mentions)
+            await _handle_add_users_to_existing_subgroup(session, update, subgroup_name, users_ids_and_mentions)
             return
         else:
             await _handle_create_subgroup(session, update, subgroup_name, users_ids_and_mentions)

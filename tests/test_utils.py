@@ -24,18 +24,18 @@ async def test_is_group_chat(telegram_chat_id, expected_result):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("usernames, expected_result", [
-    ({"@me", "@pablo", "@garcia"}, {"richie", "pablo", "garcia"}),  # @me is present
-    ({"@ME", "@pablo", "@garcia"}, {"richie", "pablo", "garcia"}),  # Uppercase
-    ({"@mE", "@pablo", "@garcia"}, {"richie", "pablo", "garcia"}),  # Mixed case
-    ({"@richie", "@pablo", "@garcia"}, {"richie", "pablo", "garcia"}),  # No @me
+    ({"@me", "@pablo", "@garcia"}, {"@richie", "@pablo", "@garcia"}),  # @me is present
+    ({"@ME", "@pablo", "@garcia"}, {"@richie", "@pablo", "@garcia"}),  # Uppercase
+    ({"@mE", "@pablo", "@garcia"}, {"@richie", "@pablo", "@garcia"}),  # Mixed case
+    ({"@richie", "@pablo", "@garcia"}, {"@richie", "@pablo", "@garcia"}),  # No @me
     ({}, set()),  # Empty set
 ])
-async def test_format_telegram_usernames(usernames, expected_result):
+async def test_replace_me_mentions(usernames, expected_result):
     # Given: We have the telegram user
     telegram_user = Mock()
     telegram_user.id = 123
     telegram_user.first_name = "Richard"
-    telegram_user.username = "richie"
+    telegram_user.name = "@richie"
 
     # When: We format the usernames
     result = await replace_me_mentions(usernames, telegram_user)

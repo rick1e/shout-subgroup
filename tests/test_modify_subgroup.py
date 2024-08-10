@@ -29,7 +29,7 @@ async def test_add_users_to_existing_subgroup(db: Session):
     create_test_subgroup(db, group_chat.group_chat_id, subgroup_name, initial_subgroup_users)
 
     # When: We add a new member to the group
-    subgroup = await add_users_to_existing_subgroup(db, telegram_group_chat_id, subgroup_name, {betty.username})
+    subgroup = await add_users_to_existing_subgroup(db, telegram_group_chat_id, subgroup_name, {betty.user_id})
 
     # Then: It's added correctly
     assert len(subgroup.users) == 3
@@ -56,7 +56,7 @@ async def test_add_users_to_existing_subgroup_when_provided_user_already_in_grou
     create_test_subgroup(db, group_chat.group_chat_id, subgroup_name, initial_subgroup_users)
 
     # When: We add a new member and an existing member to the group
-    members_to_add = {jane.username, betty.username}
+    members_to_add = {jane.user_id, betty.user_id}
     subgroup = await add_users_to_existing_subgroup(db, telegram_group_chat_id, subgroup_name, members_to_add)
 
     # Then: It's added correctly
@@ -85,7 +85,7 @@ async def test_add_users_to_existing_subgroup_throws_exception_for_non_existent_
     # When: We try to modify a non-existent subgroup
     non_existent_subgroup_name = "Party"
     with pytest.raises(SubGroupDoesNotExistsError) as ex:
-        await add_users_to_existing_subgroup(db, telegram_group_chat_id, non_existent_subgroup_name, {john.username})
+        await add_users_to_existing_subgroup(db, telegram_group_chat_id, non_existent_subgroup_name, {john.user_id})
 
     # Then: The exception is thrown with correct message
     assert non_existent_subgroup_name in ex.value.message
@@ -107,9 +107,9 @@ async def test_add_users_to_existing_subgroup_throws_exception_for_non_existent_
     create_test_subgroup(db, group_chat.group_chat_id, subgroup_name, initial_subgroup_users)
 
     # When: We try to add a non-existent user
-    non_existent_user = {"mary"}
+    non_existent_user_id = {None}
     with pytest.raises(UserDoesNotExistsError) as ex:
-        await add_users_to_existing_subgroup(db, telegram_group_chat_id, subgroup_name, non_existent_user)
+        await add_users_to_existing_subgroup(db, telegram_group_chat_id, subgroup_name, non_existent_user_id)
 
     # Then: The exception is thrown with correct message
     assert "usernames are not" in ex.value.message

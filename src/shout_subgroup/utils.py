@@ -39,9 +39,6 @@ async def replace_me_mentions(usernames: set[str], telegram_user: User) -> set[s
     :return: set
     """
 
-    # # Removing the '@' mention from args for usernames
-    # formatted_usernames = {name.replace("@", "") for name in usernames}
-
     # Check if any of the usernames is "@me".
     # If it's "@me", we're going to treat is as an alias
     # for the user who sent the message b/c when you type '@' in
