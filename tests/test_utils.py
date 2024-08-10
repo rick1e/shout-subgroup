@@ -3,8 +3,9 @@ from unittest.mock import Mock
 import pytest
 from sqlalchemy.orm import Session
 
+from shout_subgroup.exceptions import UserDoesNotExistsError
 from shout_subgroup.utils import is_group_chat, replace_me_mentions, get_user_id_from_mention, \
-    UserIdMentionMapping, get_mention_from_user_id_mention_mappings
+    UserIdMentionMapping, get_mention_from_user_id_mention_mappings, create_mention_from_user_id
 from test_helpers import create_test_user
 
 
@@ -91,7 +92,7 @@ async def test_get_user_id_from_mention_with_markdown(db: Session):
 @pytest.mark.asyncio
 async def test_get_user_id_from_mention_with_markdown_non_existent_user(db: Session):
     # Given: A users exist within our system
-    jane = create_test_user(db, telegram_user_id=12345, username=None, first_name="Jane", last_name="Doe")
+    create_test_user(db, telegram_user_id=12345, username=None, first_name="Jane", last_name="Doe")
 
     # And: We mention them by username
     mention = "[Jane](tg://user?id=98765)"
@@ -140,3 +141,41 @@ async def test_get_mention_from_user_id_no_match():
 
     # Then: it finds the mapping
     assert not result
+
+
+@pytest.mark.asyncio
+async def test_create_mention_from_user_id(db: Session):
+
+    # Given: A users exist within our system
+    jane = create_test_user(db, telegram_user_id=12345, username="janey", first_name="Jane", last_name="Doe")
+
+    # When: We create a mention from the user ID
+    result = await create_mention_from_user_id(db, jane.user_id)
+
+    # Then: The result should be a mention using the username
+    assert result == "@janey"
+
+
+@pytest.mark.asyncio
+async def test_create_mention_from_user_id_without_username(db: Session):
+    # Given: A user exists in the system without a username, but with a first name and Telegram user ID
+    john = create_test_user(db, telegram_user_id=67890, username=None, first_name="John", last_name="Doe")
+
+    # When: We create a mention from the user ID
+    result = await create_mention_from_user_id(db, john.user_id)
+
+    # Then: The result should be a mention using the first name and Telegram user ID
+    assert result == "[John](tg://user?id=67890)"
+
+
+@pytest.mark.asyncio
+async def test_create_mention_from_nonexistent_user_id(db: Session):
+    # Given: A non-existent user ID is provided
+    non_existent_user_id = "non_existent_user_id"
+
+    # When: We attempt to create a mention from the non-existent user ID
+    # Then: The function should raise an appropriate exception
+    with pytest.raises(UserDoesNotExistsError) as exc:
+        await create_mention_from_user_id(db, non_existent_user_id)
+
+    assert exc.value.message == f"Can not create mention for user id {non_existent_user_id} because it does not exist"

@@ -1,9 +1,11 @@
+import logging
 import re
 from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 from telegram import User
 
+from shout_subgroup.exceptions import UserDoesNotExistsError
 from shout_subgroup.repository import find_user_by_username, find_user_by_telegram_user_id, find_user_by_user_id
 
 
@@ -131,7 +133,6 @@ async def get_mention_from_user_id_mention_mappings(
     return None
 
 
-# TODO: Add test
 async def create_mention_from_user_id(db: Session, user_id: str) -> str:
     """
     Creates the mention reply text for a user id
@@ -140,6 +141,11 @@ async def create_mention_from_user_id(db: Session, user_id: str) -> str:
     :return:
     """
     user = await find_user_by_user_id(db, user_id)
+
+    if not user:
+        msg = f"Can not create mention for user id {user_id} because it does not exist"
+        logging.info(msg)
+        raise UserDoesNotExistsError(msg)
 
     # If the user has a username, we can mention
     # them with it. Otherwise, we have to generate
