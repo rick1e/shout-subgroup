@@ -3,8 +3,8 @@ from unittest.mock import Mock
 import pytest
 from sqlalchemy.orm import Session
 
-from shout_subgroup.utils import is_group_chat, format_telegram_usernames, get_user_id_from_mention, \
-    UserIdMentionMapping, get_mention_from_user_id
+from shout_subgroup.utils import is_group_chat, replace_me_mentions, get_user_id_from_mention, \
+    UserIdMentionMapping, get_mention_from_user_id_mention_mappings
 from test_helpers import create_test_user
 
 
@@ -37,7 +37,7 @@ async def test_format_telegram_usernames(usernames, expected_result):
     telegram_user.username = "richie"
 
     # When: We format the usernames
-    result = await format_telegram_usernames(usernames, telegram_user)
+    result = await replace_me_mentions(usernames, telegram_user)
 
     # Then: The correct value is returned
     assert result == expected_result
@@ -116,7 +116,7 @@ async def test_get_mention_from_user_id_single_match():
     users_ids_and_mentions = {mapping_a, mapping_b}
 
     # When: We get the mention from the id
-    result = await get_mention_from_user_id(user_id, users_ids_and_mentions)
+    result = await get_mention_from_user_id_mention_mappings(user_id, users_ids_and_mentions)
 
     # Then: it finds the mapping
     assert result == mapping_a.mention
@@ -136,7 +136,7 @@ async def test_get_mention_from_user_id_no_match():
 
     # When: We get the mention from a non-existent id
     non_existent_user_id = "abc999"
-    result = await get_mention_from_user_id(non_existent_user_id, users_ids_and_mentions)
+    result = await get_mention_from_user_id_mention_mappings(non_existent_user_id, users_ids_and_mentions)
 
     # Then: it finds the mapping
     assert not result

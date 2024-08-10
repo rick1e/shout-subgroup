@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 from telegram import User
 
-from shout_subgroup.repository import find_user_by_username, find_user_by_telegram_user_id
+from shout_subgroup.repository import find_user_by_username, find_user_by_telegram_user_id, find_user_by_user_id
 
 
 async def usernames_valid(usernames: set[str]) -> bool:
@@ -29,19 +29,16 @@ async def is_group_chat(telegram_chat_id: int) -> bool:
     return telegram_chat_id <= 0
 
 
-async def format_telegram_usernames(usernames: set[str], telegram_user: User) -> set[str]:
+async def replace_me_mentions(usernames: set[str], telegram_user: User) -> set[str]:
     """
-    Takes the Telegram usernames then converts them
-    into a format we save within our system.
-    We don't save the '@' symbol, and we also convert "@me"
-    into the corresponding username.
+    Converts "@me" into the corresponding username.
     :param usernames:
     :param telegram_user:
     :return: set
     """
 
-    # Removing the '@' mention from args for usernames
-    formatted_usernames = {name.replace("@", "") for name in usernames}
+    # # Removing the '@' mention from args for usernames
+    # formatted_usernames = {name.replace("@", "") for name in usernames}
 
     # Check if any of the usernames is "@me".
     # If it's "@me", we're going to treat is as an alias
@@ -49,15 +46,14 @@ async def format_telegram_usernames(usernames: set[str], telegram_user: User) ->
     # Telegram it does not show yourself as an option.
     aliased_usernames = {
         _replace_me_mention_with_username(name, telegram_user)
-        for name in formatted_usernames
+        for name in usernames
     }
 
     return aliased_usernames
 
 
 def _replace_me_mention_with_username(username: str, telegram_user: User) -> str:
-    # TODO: Update logic when we decide how to handle Users without usernames
-    return telegram_user.username.lower() if username.lower() == "me" else username
+    return telegram_user.name.lower() if username.lower() == "@me" else username
 
 
 @dataclass(frozen=True, eq=True)
@@ -71,7 +67,7 @@ class UserIdMentionMapping:
 
 async def get_user_id_from_mention(db: Session, username_or_markdown: str) -> UserIdMentionMapping:
     user_id = (
-        await _convert_username_to_user_id(db, username_or_markdown[1:])
+        await _convert_username_to_user_id(db, username_or_markdown[1:].lower())
         if username_or_markdown[0] == "@"
         else await _convert_markdown_to_user_id(db, username_or_markdown)
     )
@@ -118,7 +114,7 @@ async def _convert_markdown_to_user_id(db: Session, telegram_markdown_v2: str) -
     return user.user_id
 
 
-async def get_mention_from_user_id(
+async def get_mention_from_user_id_mention_mappings(
         user_id: str,
         users_ids_and_mentions: set[UserIdMentionMapping]) -> str | None:
     """
@@ -133,3 +129,23 @@ async def get_mention_from_user_id(
             return mapping.mention
 
     return None
+
+
+# TODO: Add test
+async def create_mention_from_user_id(db: Session, user_id: str) -> str:
+    """
+    Creates the mention reply text for a user id
+    :param db:
+    :param user_id:
+    :return:
+    """
+    user = await find_user_by_user_id(db, user_id)
+
+    # If the user has a username, we can mention
+    # them with it. Otherwise, we have to generate
+    # markdown that Telegram recognizes
+    if user.username:
+        return f"@{user.username}"
+
+    # [John](tg://user?id=12345678)
+    return f"[{user.first_name}](tg://user?id={user.telegram_user_id})"

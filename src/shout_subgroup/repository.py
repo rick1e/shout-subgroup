@@ -82,6 +82,15 @@ async def find_users_by_user_ids(db: Session, user_ids: set[int]) -> Sequence[Us
     return result
 
 
+async def find_user_by_user_id(db: Session, user_id: str) -> UserModel | None:
+    stmt = (
+        select(UserModel)
+        .where(UserModel.user_id == user_id)
+    )
+    result = db.execute(stmt).scalars().first()
+    return result
+
+
 async def find_user_by_username(db: Session, username: str) -> UserModel | None:
     stmt = (
         select(UserModel)
