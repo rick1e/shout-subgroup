@@ -5,15 +5,26 @@ from telegram import Update, Chat
 from telegram.ext import ContextTypes
 
 from shout_subgroup.database import session
-from shout_subgroup.exceptions import NotGroupChatError, SubGroupExistsError, UserDoesNotExistsError, \
+from shout_subgroup.exceptions import (
+    NotGroupChatError,
+    SubGroupExistsError,
+    UserDoesNotExistsError,
     SubGroupDoesNotExistsError
+)
 from shout_subgroup.models import SubgroupModel
 from shout_subgroup.repository import (find_subgroup_by_telegram_group_chat_id_and_subgroup_name,
                                        find_group_chat_by_telegram_group_chat_id, find_users_by_usernames,
                                        insert_subgroup,
                                        insert_group_chat, find_users_by_user_ids)
-from shout_subgroup.utils import usernames_valid, is_group_chat, format_telegram_usernames, get_user_id_from_mention, \
-    UserIdMentionMapping, get_mention_from_user_id
+from shout_subgroup.utils import (
+    usernames_valid,
+    is_group_chat,
+    replace_me_mentions,
+    get_user_id_from_mention,
+    UserIdMentionMapping,
+    get_mention_from_user_id_mention_mappings,
+    create_mention_from_user_id
+)
 
 
 async def _handle_create_subgroup(
@@ -28,7 +39,7 @@ async def _handle_create_subgroup(
     # Note: This list shouldn't have a None value
     # b/c we'd have thrown a UserDoesNotExistsError during create_subgroup
     subgroup_mentions: list[str | None] = [
-        await get_mention_from_user_id(user.user_id, users_ids_and_mentions)
+        await get_mention_from_user_id_mention_mappings(user.user_id, users_ids_and_mentions)
         for user in subgroup.users
     ]
     joined_usernames = ", ".join(subgroup_mentions)
@@ -88,17 +99,26 @@ async def _handle_add_users_to_existing_subgroup(
         db: Session,
         update: Update,
         subgroup_name: str,
-        usernames: set[str]
+        users_ids_and_mentions: set[UserIdMentionMapping]
 ) -> None:
+    user_ids: set[str | None] = {id_and_mention.user_id for id_and_mention in users_ids_and_mentions}
     subgroup: SubgroupModel = await add_users_to_existing_subgroup(
         db,
         update.effective_chat.id,
         subgroup_name,
-        usernames
+        user_ids
     )
-    subgroup_usernames = [f"@{user.username}" for user in subgroup.users]
-    joined_usernames = ", ".join(subgroup_usernames)
-    await update.message.reply_text(f"Subgroup '{subgroup.name}' now has the following members {joined_usernames}")
+    # Note: This list shouldn't have a None value
+    # b/c we'd have thrown a UserDoesNotExistsError during create_subgroup
+    subgroup_mentions: list[str | None] = [
+        await create_mention_from_user_id(db, user.user_id)
+        for user in subgroup.users
+    ]
+    joined_usernames = ", ".join(subgroup_mentions)
+    await update.message.reply_text(
+        f"Subgroup '{subgroup.name}' now has the following members {joined_usernames}",
+        parse_mode="markdown"
+    )
     return
 
 
@@ -106,7 +126,7 @@ async def add_users_to_existing_subgroup(
         db: Session,
         telegram_chat_id: int,
         subgroup_name: str,
-        usernames: set[str]
+        user_ids: set[int | None]
 ) -> SubgroupModel:
     subgroup = await find_subgroup_by_telegram_group_chat_id_and_subgroup_name(db, telegram_chat_id, subgroup_name)
     if not subgroup:
@@ -115,10 +135,14 @@ async def add_users_to_existing_subgroup(
         logging.exception(msg)
         raise SubGroupDoesNotExistsError(msg)
 
-    # If we can't find all the users, then it means we have not saved them yet.
-    users_to_be_added = await find_users_by_usernames(db, usernames)
-    if len(users_to_be_added) != len(usernames):
+    if None in user_ids:
+        # If we can't find all the users, then it means we have not
+        # saved them yet. The user would have to type a message for the
+        # bot to see.
         raise UserDoesNotExistsError("All the usernames are not in the database.")
+
+    # If we can't find all the users, then it means we have not saved them yet.
+    users_to_be_added = await find_users_by_user_ids(db, user_ids)
 
     # Find all the users who aren't in the group, then add them
     for user in users_to_be_added:
@@ -180,21 +204,21 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     # [John](tg://user?id=12345678). We'll pull the user_id
     # either from the username or the URL
     user_mentions = set(update.effective_message.text_markdown_v2.split()[2:])
+    formatted_user_mentions = await replace_me_mentions(user_mentions, update.effective_user)
+
+    if not await usernames_valid(formatted_user_mentions):
+        await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
+
     users_ids_and_mentions: set[UserIdMentionMapping] = {
         await get_user_id_from_mention(session, mention)
-        for mention in user_mentions
+        for mention in formatted_user_mentions
     }
-
-    usernames = await format_telegram_usernames(user_mentions, update.effective_user)
-
-    if not await usernames_valid(usernames):
-        await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
 
     try:
 
         is_existing_subgroup = await does_subgroup_exist(session, chat_id, subgroup_name)
         if is_existing_subgroup:
-            await _handle_add_users_to_existing_subgroup(session, update, subgroup_name, usernames)
+            await _handle_add_users_to_existing_subgroup(session, update, subgroup_name, users_ids_and_mentions)
             return
         else:
             await _handle_create_subgroup(session, update, subgroup_name, users_ids_and_mentions)
@@ -285,7 +309,7 @@ async def remove_subgroup_member_handler(update: Update, context: ContextTypes.D
     subgroup_name = args[0]
 
     unformatted_usernames = set(args[1:])
-    usernames = await format_telegram_usernames(unformatted_usernames, update.effective_user)
+    usernames = await replace_me_mentions(unformatted_usernames, update.effective_user)
 
     if not await usernames_valid(usernames):
         await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
