@@ -120,17 +120,6 @@ async def find_group_chat_by_telegram_group_chat_id(db: Session, telegram_group_
 
 async def insert_user(
         db: Session,
-        user: UserModel
-) -> UserModel:
-    new_user = user
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
-
-
-async def insert_user(
-        db: Session,
         user_id: int,
         username: str,
         first_name: str,
