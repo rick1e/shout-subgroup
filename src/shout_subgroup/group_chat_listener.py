@@ -48,7 +48,7 @@ async def add_user_to_group_chat(db: Session, chat: Chat, current_user: UserMode
 
 async def remove_user_from_group_chat(db: Session, chat: Chat, current_user: UserModel) -> UserModel | None:
     if not await is_group_chat(chat.id):
-        msg = f"Can't remove user to group because telegram chat id {chat.id} is not a group chat."
+        msg = f"Can't remove user from chat because telegram chat id {chat.id} is not a group chat."
         logging.info(msg)
         raise NotGroupChatError(msg)
     
