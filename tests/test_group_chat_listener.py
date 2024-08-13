@@ -206,37 +206,33 @@ async def test_remove_user_from_group_chat(db: Session):
 
 @pytest.mark.asyncio
 async def test_remove_user_from_group_chat_if_not_in_group_chat(db: Session):
+
+    # Given: A group chat exists
     john = create_test_user(db, telegram_user_id=12345, username="johndoe", first_name="John", last_name="Doe")
     jane = create_test_user(db, telegram_user_id=67890, username="janedoe", first_name="Jane", last_name="Doe")
 
     telegram_group_chat_id = -123456789
     telegram_group_chat_name = "Group Chat"
-    telegram_group_chat_description = "Test Chatting"
+    telegram_chat = Mock()
+    telegram_chat.id = telegram_group_chat_id
+    telegram_chat.title = telegram_group_chat_name
+    telegram_chat.description = "Testing Chat"
 
-    initial_group_chat_users = [jane]
-    group_chat = create_test_group_chat(db, telegram_group_chat_id, telegram_group_chat_name, initial_group_chat_users)
+    initial_group_chat_users = [john]
+    create_test_group_chat(db, telegram_group_chat_id, telegram_group_chat_name, initial_group_chat_users)
 
-    # When: We try to remove the user from the individual chat
+    # And: A user leaves the group chat before they were registered by the bot
     betty = Mock()
     betty.user_id = 12345
-    betty.username = "johndoe"
-    betty.first_name = "John"
-    betty.last_name = "Doe"
+    betty.username = "bettysue"
+    betty.first_name = "Betty"
+    betty.last_name = "Sue"
 
-    # Given: A individual chat exists
-    individual_chat = 12345
-    telegram_chat = Mock()
-    telegram_chat.id = individual_chat
-    telegram_chat.title = "Betty"
-    telegram_chat.description = "Betty Chat"
-
-    # When: The listener determines this
+    # When: The listener detects this
     removed_user = await remove_user_from_group_chat(db, telegram_chat, betty)
 
-    # Then: An exception is thrown
-    assert removed_user.user_id is None
-    actual_user = next((user for user in group_chat.users if user.username == betty.username), None)
-    assert actual_user is None
+    # Then: A None should be returned b/c the user was never registered
+    assert removed_user is None
 
 
 @pytest.mark.asyncio
