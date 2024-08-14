@@ -118,7 +118,6 @@ async def find_group_chat_by_telegram_group_chat_id(db: Session, telegram_group_
     result = db.execute(stmt).scalars().first()
     return result
 
-
 async def insert_user(
         db: Session,
         user_id: int,

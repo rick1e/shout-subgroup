@@ -52,8 +52,12 @@ def create_message_to_mention_members(members: Sequence[UserModel]) -> str:
     for member in members:
         message += mention_user(member) + " "
 
+    message = escape_special_characters(message)
     return message
 
+def escape_special_characters(message: str):
+    # TODO: add other special characters
+    return message.replace("_","\\_")
 
 async def shout_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     args = context.args

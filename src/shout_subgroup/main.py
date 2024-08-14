@@ -7,12 +7,15 @@ from shout import shout_handler
 from modify_subgroup import subgroup_handler, remove_subgroup_member_handler
 from shout_subgroup.delete_subgroup import remove_subgroup_handler
 from shout_subgroup.list_subgroup import list_subgroup_handler
-from group_chat_listener import listen_for_messages_handler
+from group_chat_listener import listen_for_messages_handler, listen_for_new_member_handler, listen_for_left_member_handler
+
+
+from telegram import Update, Chat
+from telegram.ext import ContextTypes
 
 # Your bot's token
 load_dotenv()
 TOKEN = os.getenv('TELEGRAM_API_KEY')
-
 
 def main() -> None:
     app = ApplicationBuilder().token(TOKEN).build()
@@ -23,6 +26,8 @@ def main() -> None:
     app.add_handler(CommandHandler("kick", remove_subgroup_member_handler))
     app.add_handler(CommandHandler("delete", remove_subgroup_handler))
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), listen_for_messages_handler))
+    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, listen_for_new_member_handler))
+    app.add_handler(MessageHandler(filters.StatusUpdate.LEFT_CHAT_MEMBER, listen_for_left_member_handler))
 
     app.run_polling()
 
