@@ -3,7 +3,9 @@ from sqlalchemy.orm import sessionmaker
 
 from shout_subgroup.models import Base, UserModel, GroupChatModel
 
-engine = create_engine('sqlite:///pingdem_database.db', echo=True)
+# engine = create_engine('sqlite:///pingdem_database.db', echo=True)
+engine = create_engine('postgresql+psycopg2://myuser:mypassword@localhost:5432/mydatabase', echo=True)
+
 
 # Drop the tables during development. Don't use in production
 Base.metadata.drop_all(engine)
