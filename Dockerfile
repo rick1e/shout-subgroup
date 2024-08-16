@@ -20,8 +20,6 @@ WORKDIR $WORKDIR
 
 # Copy the requirements and src code
 COPY requirements.lock ./
-COPY pyproject.toml ./
-COPY README.md ./
 COPY src src
 
 # Install uv. UV is a super fast package manager in the Python ecosystem.
@@ -33,6 +31,7 @@ RUN uv venv && uv pip install --no-cache-dir -r requirements.lock
 
 # Make HTTP and Redis ports available to the world outside this container
 EXPOSE 80
+EXPOSE 5432
 
 # Run app.py when the container launches
 CMD ["python", "src/shout_subgroup/main.py"]
