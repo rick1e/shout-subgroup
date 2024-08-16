@@ -318,9 +318,6 @@ async def remove_subgroup_member_handler(update: Update, context: ContextTypes.D
     user_mentions = set(update.effective_message.text_markdown_v2.split()[2:])
     formatted_user_mentions = await replace_me_mentions(user_mentions, update.effective_user)
 
-    # unformatted_usernames = set(args[1:])
-    # usernames = await replace_me_mentions(unformatted_usernames, update.effective_user)
-
     if not await are_mentions_valid(formatted_user_mentions):
         await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
 
@@ -332,7 +329,6 @@ async def remove_subgroup_member_handler(update: Update, context: ContextTypes.D
     try:
 
         user_ids: set[str | None] = {id_and_mention.user_id for id_and_mention in users_ids_and_mentions}
-
         subgroup = await remove_users_from_existing_subgroup(
             session,
             update.effective_chat.id,
