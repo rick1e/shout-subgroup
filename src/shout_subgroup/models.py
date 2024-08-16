@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Table, UniqueConstraint
+from sqlalchemy import Column, String, Integer, BigInteger, DateTime, ForeignKey, Table, UniqueConstraint
 from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
@@ -26,7 +26,7 @@ users_group_chats_join_table = Table(
 class UserModel(Base):
     __tablename__ = 'users'
     user_id = Column(String, primary_key=True, default=lambda: str(uuid4()))
-    telegram_user_id = Column(Integer, nullable=False, unique=True)
+    telegram_user_id = Column(BigInteger, nullable=False, unique=True)
     username = Column(String, nullable=True)
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=True)
@@ -49,7 +49,7 @@ class SubgroupModel(Base):
 class GroupChatModel(Base):
     __tablename__ = 'group_chats'
     group_chat_id = Column(String, primary_key=True, default=lambda: str(uuid4()))
-    telegram_group_chat_id = Column(Integer, nullable=False, unique=True)
+    telegram_group_chat_id = Column(BigInteger, nullable=False, unique=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
