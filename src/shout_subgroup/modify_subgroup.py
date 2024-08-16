@@ -14,7 +14,7 @@ from shout_subgroup.exceptions import (
 from shout_subgroup.models import SubgroupModel
 from shout_subgroup.repository import (find_subgroup_by_telegram_group_chat_id_and_subgroup_name,
                                        find_group_chat_by_telegram_group_chat_id, insert_subgroup,
-                                       insert_group_chat, find_users_by_user_ids)
+                                       insert_group_chat, find_users_by_user_ids, add_users_to_subgroup)
 from shout_subgroup.utils import (
     are_mentions_valid,
     is_group_chat,
@@ -140,23 +140,7 @@ async def add_users_to_existing_subgroup(
         # bot to see.
         raise UserDoesNotExistsError("All the usernames are not in the database.")
 
-    # If we can't find all the users, then it means we have not saved them yet.
-    users_to_be_added = await find_users_by_user_ids(db, user_ids)
-
-    # Find all the users who aren't in the group, then add them
-    for user in users_to_be_added:
-        # How Equivalency is Checked:
-        # __eq__ Method:
-        # SQLAlchemy model instances, like those created with the `UserModel`, have an `__eq__` method
-        # that checks equivalency based on the primary key by default.
-        # This means that two instances of `UserModel` are considered equal
-        # if their primary key (`user_id`) values are the same.
-        if user not in subgroup.users:
-            subgroup.users.append(user)
-
-    # Commit the transaction
-    db.commit()
-    db.refresh(subgroup)
+    await add_users_to_subgroup(db, subgroup, user_ids)
 
     return subgroup
 

@@ -7,7 +7,10 @@ from telegram.ext import ContextTypes
 from shout_subgroup.database import session
 from shout_subgroup.exceptions import NotGroupChatError, SubGroupDoesNotExistsError, UserDoesNotExistsError
 from shout_subgroup.models import SubgroupModel
-from shout_subgroup.repository import find_subgroup_by_telegram_group_chat_id_and_subgroup_name, find_users_by_user_ids
+from shout_subgroup.repository import (
+    find_subgroup_by_telegram_group_chat_id_and_subgroup_name,
+    remove_users_from_subgroup
+)
 from shout_subgroup.utils import is_group_chat, replace_me_mentions, are_mentions_valid, UserIdMentionMapping, \
     get_user_id_from_mention
 
@@ -109,22 +112,6 @@ async def remove_users_from_existing_subgroup(
         # bot to see.
         raise UserDoesNotExistsError("All the usernames are not in the database.")
 
-    # If we can't find all the users, then it means we have not saved them yet.
-    users_to_be_removed = await find_users_by_user_ids(db, user_ids)
-
-    # Find all the users who aren't in the group, then add them
-    for user in users_to_be_removed:
-        # How Equivalency is Checked:
-        # __eq__ Method:
-        # SQLAlchemy model instances, like those created with the `UserModel`, have an `__eq__` method
-        # that checks equivalency based on the primary key by default.
-        # This means that two instances of `UserModel` are considered equal
-        # if their primary key (`user_id`) values are the same.
-        if user in subgroup.users:
-            subgroup.users.remove(user)
-
-    # Commit the transaction
-    db.commit()
-    db.refresh(subgroup)
+    await remove_users_from_subgroup(db, subgroup, user_ids)
 
     return subgroup
