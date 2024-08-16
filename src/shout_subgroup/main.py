@@ -3,19 +3,16 @@ import os
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler, filters, MessageHandler
 
-from shout import shout_handler
+from group_chat_listener import listen_for_messages_handler, listen_for_new_member_handler, \
+    listen_for_left_member_handler
 from modify_subgroup import subgroup_handler, remove_subgroup_member_handler
+from shout import shout_handler
 from shout_subgroup.delete_subgroup import remove_subgroup_handler
 from shout_subgroup.list_subgroup import list_subgroup_handler
-from group_chat_listener import listen_for_messages_handler, listen_for_new_member_handler, listen_for_left_member_handler
 
-
-from telegram import Update, Chat
-from telegram.ext import ContextTypes
-
-# Your bot's token
 load_dotenv()
 TOKEN = os.getenv('TELEGRAM_API_KEY')
+
 
 def main() -> None:
     app = ApplicationBuilder().token(TOKEN).build()

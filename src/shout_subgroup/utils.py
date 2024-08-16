@@ -9,7 +9,7 @@ from shout_subgroup.exceptions import UserDoesNotExistsError
 from shout_subgroup.repository import find_user_by_username, find_user_by_telegram_user_id, find_user_by_user_id
 
 
-async def usernames_valid(usernames: set[str]) -> bool:
+async def are_mentions_valid(usernames: set[str]) -> bool:
     """
     Checks if usernames are valid strings
     :param usernames:

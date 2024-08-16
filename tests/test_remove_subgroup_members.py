@@ -2,15 +2,8 @@ import pytest
 from sqlalchemy.orm import Session
 
 from shout_subgroup.exceptions import SubGroupDoesNotExistsError, UserDoesNotExistsError, NotGroupChatError
-from shout_subgroup.modify_subgroup import add_users_to_existing_subgroup, remove_users_from_existing_subgroup
+from shout_subgroup.modify_subgroup import remove_users_from_existing_subgroup
 from test_helpers import create_test_user, create_test_group_chat, create_test_subgroup
-
-
-class MockTelegramChat:
-    def __init__(self, id, title, description):
-        self.id = id
-        self.title = title
-        self.description = description
 
 
 @pytest.mark.asyncio
@@ -29,7 +22,7 @@ async def test_remove_users_from_existing_subgroup(db: Session):
     create_test_subgroup(db, group_chat.group_chat_id, subgroup_name, initial_subgroup_users)
 
     # When: We remove a member from the subgroup
-    users_to_remove = {john.username}
+    users_to_remove = {john.user_id}
     subgroup = await remove_users_from_existing_subgroup(db, telegram_group_chat_id, subgroup_name, users_to_remove)
 
     # Then: The subgroup doesn't have the member anymore
@@ -57,7 +50,7 @@ async def test_remove_a_user_who_is_not_in_the_subgroup(db: Session):
     create_test_subgroup(db, group_chat.group_chat_id, subgroup_name, initial_subgroup_users)
 
     # When: We remove a member who isn't in the group
-    users_to_remove = {john.username}
+    users_to_remove = {john.user_id}
     subgroup = await remove_users_from_existing_subgroup(db, telegram_group_chat_id, subgroup_name, users_to_remove)
 
     # Then: The subgroup is unchanged
@@ -84,7 +77,7 @@ async def test_remove_all_users_from_existing_subgroup(db: Session):
     create_test_subgroup(db, group_chat.group_chat_id, subgroup_name, initial_subgroup_users)
 
     # When: We remove all the members
-    users_to_remove = {jane.username, betty.username}
+    users_to_remove = {jane.user_id, betty.user_id}
     subgroup = await remove_users_from_existing_subgroup(db, telegram_group_chat_id, subgroup_name, users_to_remove)
 
     # Then: The subgroup is empty
@@ -106,7 +99,7 @@ async def test_remove_users_from_existing_subgroup_when_group_is_empty(db: Sessi
     create_test_subgroup(db, group_chat.group_chat_id, subgroup_name, initial_subgroup_users)
 
     # When: We remove a user
-    members_to_remove = {jane.username, betty.username}
+    members_to_remove = {jane.user_id, betty.user_id}
     subgroup = await remove_users_from_existing_subgroup(db, telegram_group_chat_id, subgroup_name, members_to_remove)
 
     # Then: The group remains empty
@@ -130,7 +123,7 @@ async def test_remove_users_from_existing_subgroup_throws_exception_for_non_grou
     # When: We try to remove a user
     user_chat_id = 1234
     with pytest.raises(NotGroupChatError) as ex:
-        await remove_users_from_existing_subgroup(db, user_chat_id, subgroup_name, {john.username})
+        await remove_users_from_existing_subgroup(db, user_chat_id, subgroup_name, {john.user_id})
 
     # Then: The exception is thrown with correct message
     assert str(user_chat_id) in ex.value.message
@@ -153,8 +146,12 @@ async def test_remove_users_from_existing_subgroup_throws_exception_for_non_exis
     # When: We try to remove a user from a non-existent subgroup
     non_existent_subgroup_name = "Party"
     with pytest.raises(SubGroupDoesNotExistsError) as ex:
-        await remove_users_from_existing_subgroup(db, telegram_group_chat_id, non_existent_subgroup_name,
-                                                  {john.username})
+        await remove_users_from_existing_subgroup(
+            db,
+            telegram_group_chat_id,
+            non_existent_subgroup_name,
+            {john.username}
+        )
 
     # Then: The exception is thrown with correct message
     assert non_existent_subgroup_name in ex.value.message
@@ -176,9 +173,9 @@ async def test_remove_users_from_existing_subgroup_throws_exception_for_non_exis
     create_test_subgroup(db, group_chat.group_chat_id, subgroup_name, initial_subgroup_users)
 
     # When: We try to remove a non-existent user
-    non_existent_user = {"mary"}
+    non_existent_user_id = {None}
     with pytest.raises(UserDoesNotExistsError) as ex:
-        await remove_users_from_existing_subgroup(db, telegram_group_chat_id, subgroup_name, non_existent_user)
+        await remove_users_from_existing_subgroup(db, telegram_group_chat_id, subgroup_name, non_existent_user_id)
 
     # Then: The exception is thrown with correct message
     assert "usernames are not" in ex.value.message

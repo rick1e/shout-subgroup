@@ -17,7 +17,7 @@ from shout_subgroup.repository import (find_subgroup_by_telegram_group_chat_id_a
                                        insert_subgroup,
                                        insert_group_chat, find_users_by_user_ids)
 from shout_subgroup.utils import (
-    usernames_valid,
+    are_mentions_valid,
     is_group_chat,
     replace_me_mentions,
     get_user_id_from_mention,
@@ -196,7 +196,6 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await update.message.reply_text(msg)
         return
 
-    chat_id = update.effective_chat.id
     subgroup_name = args[0]
 
     # The text markdown contains the username if it exists.
@@ -206,7 +205,7 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     user_mentions = set(update.effective_message.text_markdown_v2.split()[2:])
     formatted_user_mentions = await replace_me_mentions(user_mentions, update.effective_user)
 
-    if not await usernames_valid(formatted_user_mentions):
+    if not await are_mentions_valid(formatted_user_mentions):
         await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
 
     users_ids_and_mentions: set[UserIdMentionMapping] = {
@@ -216,7 +215,7 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     try:
 
-        is_existing_subgroup = await does_subgroup_exist(session, chat_id, subgroup_name)
+        is_existing_subgroup = await does_subgroup_exist(session, update.effective_chat.id, subgroup_name)
         if is_existing_subgroup:
             await _handle_add_users_to_existing_subgroup(session, update, subgroup_name, users_ids_and_mentions)
             return
@@ -252,7 +251,7 @@ async def remove_users_from_existing_subgroup(
         db: Session,
         telegram_chat_id: int,
         subgroup_name: str,
-        usernames: set[str]
+        user_ids: set[int | None]
 ) -> SubgroupModel:
     if not await is_group_chat(telegram_chat_id):
         msg = f"Can't kick members from subgroup because telegram chat id {telegram_chat_id} is not a group chat."
@@ -265,10 +264,14 @@ async def remove_users_from_existing_subgroup(
         logging.info(msg)
         raise SubGroupDoesNotExistsError(msg)
 
-    # If we can't find all the users, then it means we have not saved them yet.
-    users_to_be_removed = await find_users_by_usernames(db, usernames)
-    if len(users_to_be_removed) != len(usernames):
+    if None in user_ids:
+        # If we can't find all the users, then it means we have not
+        # saved them yet. The user would have to type a message for the
+        # bot to see.
         raise UserDoesNotExistsError("All the usernames are not in the database.")
+
+    # If we can't find all the users, then it means we have not saved them yet.
+    users_to_be_removed = await find_users_by_user_ids(db, user_ids)
 
     # Find all the users who aren't in the group, then add them
     for user in users_to_be_removed:
@@ -308,18 +311,29 @@ async def remove_subgroup_member_handler(update: Update, context: ContextTypes.D
 
     subgroup_name = args[0]
 
-    unformatted_usernames = set(args[1:])
-    usernames = await replace_me_mentions(unformatted_usernames, update.effective_user)
+    # The text markdown contains the username if it exists.
+    # When a user doesn't have a username, telegram uses an url
+    # [John](tg://user?id=12345678). We'll pull the user_id
+    # either from the username or the URL
+    user_mentions = set(update.effective_message.text_markdown_v2.split()[2:])
+    formatted_user_mentions = await replace_me_mentions(user_mentions, update.effective_user)
 
-    if not await usernames_valid(usernames):
+    if not await are_mentions_valid(formatted_user_mentions):
         await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
 
+    users_ids_and_mentions: set[UserIdMentionMapping] = {
+        await get_user_id_from_mention(session, mention)
+        for mention in formatted_user_mentions
+    }
+
     try:
+
+        user_ids: set[str | None] = {id_and_mention.user_id for id_and_mention in users_ids_and_mentions}
         subgroup = await remove_users_from_existing_subgroup(
             session,
             update.effective_chat.id,
             subgroup_name,
-            usernames
+            user_ids
         )
 
         subgroup_usernames = [f"@{user.username}" for user in subgroup.users]
@@ -327,7 +341,7 @@ async def remove_subgroup_member_handler(update: Update, context: ContextTypes.D
         msg = (
             f"Subgroup {subgroup.name} now has the following members {joined_usernames}"
             if subgroup.users
-            else f"Subgroup {subgroup.name} has the no members"
+            else f"Subgroup '{subgroup.name}' has no members"
         )
         await update.message.reply_text(msg)
         return
