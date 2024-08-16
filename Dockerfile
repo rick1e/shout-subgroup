@@ -20,6 +20,8 @@ WORKDIR $WORKDIR
 
 # Copy the requirements and src code
 COPY requirements.lock ./
+COPY pyproject.toml ./
+COPY README.md ./
 COPY src src
 
 # Install uv. UV is a super fast package manager in the Python ecosystem.
