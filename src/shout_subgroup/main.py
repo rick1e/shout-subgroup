@@ -11,11 +11,17 @@ from shout import shout_handler
 from shout_subgroup.delete_subgroup import remove_subgroup_handler
 from shout_subgroup.list_subgroup import list_subgroup_handler
 
+from shout_subgroup.database import configure_database
+
 load_dotenv()
 TOKEN = os.getenv('TELEGRAM_API_KEY')
 
 
 def main() -> None:
+
+    if not configure_database():
+        exit(1)
+
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("shout", shout_handler))
