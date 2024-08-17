@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from telegram import Update, Chat
 from telegram.ext import ContextTypes
 
-from shout_subgroup.database import session
 from shout_subgroup.exceptions import (
     NotGroupChatError,
     SubGroupExistsError,
@@ -25,6 +24,8 @@ from shout_subgroup.utils import (
     get_mention_from_user_id_mention_mappings,
     create_mention_from_user_id
 )
+
+from shout_subgroup.database import get_database
 
 
 async def _handle_create_subgroup(
@@ -189,6 +190,7 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     """
 
     args = context.args
+    session = get_database()
 
     # Quick guard clause
     if len(args) < 2:
@@ -302,6 +304,7 @@ async def remove_subgroup_member_handler(update: Update, context: ContextTypes.D
     :return:
     """
     args = context.args
+    session = get_database()
 
     # Quick guard clause
     if len(args) < 2:

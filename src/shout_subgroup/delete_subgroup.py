@@ -4,10 +4,11 @@ from sqlalchemy.orm import Session
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from shout_subgroup.database import session
 from shout_subgroup.exceptions import SubGroupDoesNotExistsError, NotGroupChatError
 from shout_subgroup.repository import find_subgroup_by_telegram_group_chat_id_and_subgroup_name, delete_subgroup
 from shout_subgroup.utils import is_group_chat
+
+from shout_subgroup.database import get_database
 
 
 async def remove_subgroup(db: Session, telegram_chat_id: int, subgroup_name: str) -> bool:
@@ -41,6 +42,7 @@ async def remove_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_
     """
 
     args = context.args
+    session = get_database()
 
     # Quick guard clause
     if len(args) < 1:

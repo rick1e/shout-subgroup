@@ -5,13 +5,14 @@ from sqlalchemy.orm import Session
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from shout_subgroup.database import session
 from shout_subgroup.exceptions import NotGroupChatError, SubGroupDoesNotExistsError
 from shout_subgroup.models import SubgroupModel, UserModel
 from shout_subgroup.repository import (find_all_subgroups_in_group_chat,
                                        find_subgroup_by_telegram_group_chat_id_and_subgroup_name,
                                        find_all_users_in_subgroup)
 from shout_subgroup.utils import is_group_chat
+
+from shout_subgroup.database import get_database
 
 
 async def _handle_list_subgroups(update: Update, db: Session, telegram_group_chat_id: int):
@@ -108,6 +109,7 @@ async def list_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TY
     args = context.args
     chat_id = update.effective_chat.id
     subgroup_name = args[0] if len(args) == 1 else ""
+    session = get_database()
 
     try:
         # If the subgroup name doesn't exist, we'll default to listing the subgroups

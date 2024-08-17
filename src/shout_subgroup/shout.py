@@ -5,12 +5,13 @@ from sqlalchemy.orm import Session
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from shout_subgroup.database import session
 from shout_subgroup.exceptions import NotGroupChatError, GroupChatDoesNotExistError
 from shout_subgroup.models import UserModel
 from shout_subgroup.repository import find_all_users_in_group_chat, find_all_users_in_subgroup, \
     find_group_chat_by_telegram_group_chat_id
 from shout_subgroup.utils import is_group_chat
+
+from shout_subgroup.database import get_database
 
 
 async def shout_subgroup_members(db: Session, telegram_chat_id: int, subgroup_name: str) -> str:
@@ -38,7 +39,6 @@ async def shout_all_members(db: Session, telegram_group_chat_id: int) -> str:
 
 
 def mention_user(user: UserModel) -> str:
-    mention = ""
     if user.username:
         mention = f"@{user.username}"
     else:
@@ -61,6 +61,7 @@ def escape_special_characters(message: str):
 
 async def shout_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     args = context.args
+    session = get_database()
 
     if len(args) == 1:
         message = await shout_subgroup_members(session, args[0])

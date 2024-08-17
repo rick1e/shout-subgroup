@@ -5,7 +5,6 @@ from telegram import Update, Chat
 from telegram.ext import ContextTypes
 
 from shout_subgroup.exceptions import NotGroupChatError
-from shout_subgroup.database import session
 from shout_subgroup.models import UserModel
 from shout_subgroup.repository import (
     find_all_users_in_group_chat,
@@ -17,6 +16,8 @@ from shout_subgroup.repository import (
 )
 from shout_subgroup.utils import is_group_chat
 from shout_subgroup.modify_subgroup import remove_users_from_existing_subgroup
+
+from shout_subgroup.database import get_database
 
 
 async def add_user_to_group_chat(db: Session, chat: Chat, current_user: UserModel) -> UserModel | None:
@@ -78,6 +79,7 @@ async def remove_user_from_all_group_chat_sub_groups(db: Session, telegram_group
 
 
 async def listen_for_messages_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    session = get_database()
     current_user = UserModel(
         telegram_user_id=update.message.from_user.id,
         username=update.message.from_user.username,
@@ -94,6 +96,8 @@ async def listen_for_messages_handler(update: Update, context: ContextTypes.DEFA
 
 
 async def listen_for_new_member_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    session = get_database()
+
     for member in update.message.new_chat_members:
         new_user = UserModel(
             telegram_user_id=member.id,
@@ -108,6 +112,7 @@ async def listen_for_new_member_handler(update: Update, context: ContextTypes.DE
 
 
 async def listen_for_left_member_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    session = get_database()
     member = update.message.left_chat_member
     left_user = UserModel(
         telegram_user_id=member.id,
