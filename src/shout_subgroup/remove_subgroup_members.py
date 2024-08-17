@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from shout_subgroup.database import session
+from shout_subgroup.database import get_database
 from shout_subgroup.exceptions import NotGroupChatError, SubGroupDoesNotExistsError, UserDoesNotExistsError
 from shout_subgroup.models import SubgroupModel
 from shout_subgroup.repository import (
@@ -26,6 +26,7 @@ async def remove_subgroup_member_handler(update: Update, context: ContextTypes.D
     :return:
     """
     args = context.args
+    session = get_database()
 
     # Quick guard clause
     if len(args) < 2:
