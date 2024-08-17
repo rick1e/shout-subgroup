@@ -1,9 +1,19 @@
+import os
+
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from shout_subgroup.models import Base, UserModel, GroupChatModel
 
-engine = create_engine('postgresql://myuser:mypassword@db:5432/mydatabase', echo=True)
+load_dotenv()
+
+POSTGRES_USER = os.getenv('POSTGRES_USER')
+POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
+POSTGRES_DB = os.getenv('POSTGRES_DB')
+POSTGRES_CONTAINER = os.getenv('POSTGRES_CONTAINER')
+
+engine = create_engine(f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_CONTAINER}:5432/{POSTGRES_DB}", echo=True)
 
 
 # Drop the tables during development. Don't use in production
