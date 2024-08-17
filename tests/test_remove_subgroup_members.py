@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from shout_subgroup.exceptions import SubGroupDoesNotExistsError, UserDoesNotExistsError, NotGroupChatError
-from shout_subgroup.modify_subgroup import remove_users_from_existing_subgroup
+from shout_subgroup.remove_subgroup_members import remove_users_from_existing_subgroup
 from test_helpers import create_test_user, create_test_group_chat, create_test_subgroup
 
 

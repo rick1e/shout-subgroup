@@ -2,21 +2,12 @@ from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.orm import Session
-from telegram import Chat
 
-from shout_subgroup.exceptions import SubGroupDoesNotExistsError, UserDoesNotExistsError, NotGroupChatError
+from shout_subgroup.exceptions import NotGroupChatError
 from shout_subgroup.group_chat_listener import add_user_to_group_chat, remove_user_from_group_chat
 from shout_subgroup.models import UserModel
-from shout_subgroup.modify_subgroup import add_users_to_existing_subgroup, remove_users_from_existing_subgroup
 from shout_subgroup.repository import find_group_chat_by_telegram_group_chat_id, find_all_users_in_subgroup
 from test_helpers import create_test_user, create_test_group_chat, create_test_subgroup
-
-
-class MockTelegramChat:
-    def __init__(self, id, title, description):
-        self.id = id
-        self.title = title
-        self.description = description
 
 
 @pytest.mark.asyncio
