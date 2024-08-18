@@ -7,14 +7,17 @@
 #   all-features: false
 #   with-sources: false
 
--e file:.
 anyio==4.4.0
     # via httpx
 certifi==2024.6.2
     # via httpcore
     # via httpx
+colorama==0.4.6
+    # via pytest
 execnet==2.1.1
     # via pytest-xdist
+greenlet==3.0.3
+    # via sqlalchemy
 h11==0.14.0
     # via httpcore
 httpcore==1.0.5
@@ -30,19 +33,17 @@ packaging==24.1
     # via pytest
 pluggy==1.5.0
     # via pytest
+psycopg2-binary==2.9.9
 pytest==8.2.2
     # via pytest-asyncio
     # via pytest-xdist
 pytest-asyncio==0.23.7
 pytest-xdist==3.6.1
 python-dotenv==1.0.1
-    # via shout-subgroup
 python-telegram-bot==20.8
-    # via shout-subgroup
 sniffio==1.3.1
     # via anyio
     # via httpx
 sqlalchemy==2.0.31
-    # via shout-subgroup
 typing-extensions==4.12.2
     # via sqlalchemy
