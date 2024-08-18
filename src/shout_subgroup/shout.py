@@ -38,7 +38,6 @@ async def shout_all_members(db: Session, telegram_group_chat_id: int) -> str:
 
 
 def mention_user(user: UserModel) -> str:
-    mention = ""
     if user.username:
         mention = f"@{user.username}"
     else:
@@ -63,7 +62,7 @@ async def shout_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     args = context.args
 
     if len(args) == 1:
-        message = await shout_subgroup_members(session, args[0])
+        message = await shout_subgroup_members(session, update.effective_chat.id, args[0])
         await update.message.reply_text(message, parse_mode='markdown')
     else:
         message = await shout_all_members(session, update.effective_chat.id)
