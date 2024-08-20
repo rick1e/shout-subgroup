@@ -7,6 +7,7 @@
 #   all-features: false
 #   with-sources: false
 
+-e file:.
 anyio==4.4.0
     # via httpx
 certifi==2024.6.2
@@ -23,11 +24,16 @@ httpx==0.26.0
 idna==3.7
     # via anyio
     # via httpx
+psycopg2-binary==2.9.9
+    # via shout-subgroup
 python-dotenv==1.0.1
+    # via shout-subgroup
 python-telegram-bot==20.8
+    # via shout-subgroup
 sniffio==1.3.1
     # via anyio
     # via httpx
 sqlalchemy==2.0.31
+    # via shout-subgroup
 typing-extensions==4.12.2
     # via sqlalchemy

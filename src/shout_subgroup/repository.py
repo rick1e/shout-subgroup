@@ -2,7 +2,6 @@ from typing import Sequence, Type
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from telegram import Chat
 
 from shout_subgroup.models import SubgroupModel, UserModel, GroupChatModel, users_group_chats_join_table, \
     users_subgroups_join_table
