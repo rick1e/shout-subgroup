@@ -117,15 +117,16 @@ async def find_group_chat_by_telegram_group_chat_id(db: Session, telegram_group_
     result = db.execute(stmt).scalars().first()
     return result
 
+
 async def insert_user(
         db: Session,
-        user_id: int,
+        telegram_user_id: int,
         username: str,
         first_name: str,
         last_name: str
 ) -> UserModel:
     new_user = UserModel(
-        telegram_user_id=user_id,
+        telegram_user_id=telegram_user_id,
         username=username,
         first_name=first_name,
         last_name=last_name
@@ -265,3 +266,26 @@ async def add_users_to_subgroup(db: Session, subgroup: SubgroupModel, user_ids: 
     db.refresh(subgroup)
 
     return subgroup
+
+
+async def add_user_to_group_chat(db: Session, group_chat: GroupChatModel, current_user: UserModel):
+    """
+    Adds a user to an existing group chat.
+    It's the callers responsibility to check
+    if the group chat exists
+    :param db:
+    :param group_chat:
+    :param current_user:
+    :return:
+    """
+    added_user = await insert_user(
+        db,
+        current_user.telegram_user_id,
+        current_user.username,
+        current_user.first_name,
+        current_user.last_name
+    )
+    group_chat.users.append(added_user)
+    db.commit()
+    db.refresh(added_user)
+    return added_user
