@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 from shout_subgroup.models import Base, UserModel, GroupChatModel
 
+
 def configure_database() -> bool:
     load_dotenv()
 
@@ -16,7 +17,8 @@ def configure_database() -> bool:
     POSTGRES_CONTAINER = os.getenv('POSTGRES_CONTAINER')
 
     try:
-        engine = create_engine(f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_CONTAINER}:5432/{POSTGRES_DB}", echo=True)
+        engine = create_engine(
+            f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_CONTAINER}:5432/{POSTGRES_DB}", echo=True)
     except Exception as ex:
         logging.exception(f"Unable to connect to postgreSQL. See exception details ... {ex}")
         return False
@@ -27,8 +29,8 @@ def configure_database() -> bool:
 
     global session
 
-    Session = sessionmaker(bind=engine)
-    session = Session()
+    session_maker = sessionmaker(bind=engine)
+    session = session_maker()
 
     # Create users
     richie = UserModel(telegram_user_id=12345, username="ashcir", first_name="Richie", last_name="Doe")
@@ -42,7 +44,8 @@ def configure_database() -> bool:
     session.add(donovan)
     session.commit()
 
-    group_chat = GroupChatModel(telegram_group_chat_id=-4239122711, name="Group Chat 1", description="This is a group chat")
+    group_chat = GroupChatModel(telegram_group_chat_id=-4239122711, name="Group Chat 1",
+                                description="This is a group chat")
     group_chat.users.append(richie)
     group_chat.users.append(alrick)
 
