@@ -6,13 +6,12 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.helpers import escape_markdown
 
+from shout_subgroup.database import get_database
 from shout_subgroup.exceptions import NotGroupChatError, GroupChatDoesNotExistError
 from shout_subgroup.models import UserModel
 from shout_subgroup.repository import find_all_users_in_group_chat, find_all_users_in_subgroup, \
     find_group_chat_by_telegram_group_chat_id
-from shout_subgroup.utils import is_group_chat
-
-from shout_subgroup.database import get_database
+from shout_subgroup.utils import is_group_chat, create_mention_from_user
 
 
 async def shout_subgroup_members(db: Session, telegram_chat_id: int, subgroup_name: str) -> str:
@@ -38,25 +37,25 @@ async def shout_all_members(db: Session, telegram_group_chat_id: int) -> str:
     return message
 
 
-def mention_user(user: UserModel) -> str:
-    if user.username:
-        mention = f"@{user.username}"
-    else:
-        mention = f"[{user.first_name}](tg://user?id={user.telegram_user_id})"
-
-    return mention
-
-
 def create_message_to_mention_members(members: Sequence[UserModel]) -> str:
     message = ""
     for member in members:
-        message += mention_user(member) + " "
+        message += create_mention_from_user(member) + " "
 
     message = escape_markdown(message)
     return message
 
 
 async def shout_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Handles alerting members in group chats and subgroups.
+    This function should not handle business logic,
+    or storing data. It will delegate that responsibility
+    to other functions. Similar to controllers from the MVC pattern.
+    :param update:
+    :param context:
+    :return:
+    """
     args = context.args
     session = get_database()
 
