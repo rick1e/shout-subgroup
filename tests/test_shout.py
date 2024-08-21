@@ -24,6 +24,22 @@ async def test_shout_all_members(db: Session):
 
 
 @pytest.mark.asyncio
+async def test_shout_all_members_if_members_have_special_chars_in_username(db: Session):
+    # Given: A group chat already exists with users that have special characters in their usernames
+    john = create_test_user(db, telegram_user_id=12345, username="john*doe", first_name="John", last_name="Doe")
+    dawn = create_test_user(db, telegram_user_id=67890, username="dawn_sun", first_name="Dawn", last_name="Sun")
+
+    telegram_group_chat_id = -123456789
+    group_chat = create_test_group_chat(db, telegram_group_chat_id, "Group Chat", [john, dawn])
+
+    # When: We shout all group members
+    message = await shout_all_members(db, group_chat.telegram_group_chat_id)
+
+    # Then: It mentions them
+    assert message == "@john\\*doe @dawn\\_sun "
+
+
+@pytest.mark.asyncio
 async def test_shout_subgroup_members(db: Session):
     # Given: A group chat already exists
     john = create_test_user(db, telegram_user_id=12345, username="johndoe", first_name="John", last_name="Doe")

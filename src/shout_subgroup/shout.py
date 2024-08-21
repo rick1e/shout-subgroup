@@ -4,6 +4,7 @@ from typing import Sequence
 from sqlalchemy.orm import Session
 from telegram import Update
 from telegram.ext import ContextTypes
+from telegram.helpers import escape_markdown
 
 from shout_subgroup.exceptions import NotGroupChatError, GroupChatDoesNotExistError
 from shout_subgroup.models import UserModel
@@ -15,7 +16,6 @@ from shout_subgroup.database import get_database
 
 
 async def shout_subgroup_members(db: Session, telegram_chat_id: int, subgroup_name: str) -> str:
-
     if not await is_group_chat(telegram_chat_id):
         msg = f"Can't create subgroup because telegram chat id {telegram_chat_id} is not a group chat."
         logging.info(msg)
@@ -52,12 +52,9 @@ def create_message_to_mention_members(members: Sequence[UserModel]) -> str:
     for member in members:
         message += mention_user(member) + " "
 
-    message = escape_special_characters(message)
+    message = escape_markdown(message)
     return message
 
-def escape_special_characters(message: str):
-    # TODO: add other special characters
-    return message.replace("_","\\_")
 
 async def shout_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     args = context.args
