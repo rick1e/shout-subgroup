@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from telegram import User
 
 from shout_subgroup.exceptions import UserDoesNotExistsError
+from shout_subgroup.models import UserModel
 from shout_subgroup.repository import find_user_by_username, find_user_by_telegram_user_id, find_user_by_user_id
 
 
@@ -144,6 +145,15 @@ async def create_mention_from_user_id(db: Session, user_id: str) -> str:
         logging.info(msg)
         raise UserDoesNotExistsError(msg)
 
+    return create_mention_from_user(user)
+
+
+def create_mention_from_user(user: UserModel) -> str:
+    """
+   Creates the mention reply text for a user id
+   :param user:
+   :return:
+   """
     # If the user has a username, we can mention
     # them with it. Otherwise, we have to generate
     # markdown that Telegram recognizes
