@@ -3,8 +3,13 @@ from typing import Sequence, Type
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from shout_subgroup.models import SubgroupModel, UserModel, GroupChatModel, users_group_chats_join_table, \
+from shout_subgroup.models import (
+    SubgroupModel,
+    UserModel,
+    GroupChatModel,
+    users_group_chats_join_table,
     users_subgroups_join_table
+)
 
 
 async def find_all_users_in_subgroup(db: Session, group_chat_id: int, subgroup_name: str) -> list[Type[UserModel]]:
@@ -289,3 +294,18 @@ async def add_user_to_group_chat(db: Session, group_chat: GroupChatModel, curren
     db.commit()
     db.refresh(added_user)
     return added_user
+
+
+async def remove_user_from_all_sub_groups_in_group_chat(db: Session,
+                                                        telegram_group_chat_id: int,
+                                                        user: UserModel) -> None:
+    subgroups = await find_all_subgroups_in_group_chat(db, telegram_group_chat_id)
+    for subgroup in subgroups:
+        await remove_users_from_subgroup(db, subgroup, {user.user_id})
+
+
+async def remove_user_from_group_chat(db: Session, group_chat: GroupChatModel, user_to_be_removed: UserModel):
+    group_chat.users.remove(user_to_be_removed)
+    db.commit()
+    db.refresh(group_chat)
+    return user_to_be_removed

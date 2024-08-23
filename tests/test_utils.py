@@ -4,8 +4,9 @@ import pytest
 from sqlalchemy.orm import Session
 
 from shout_subgroup.exceptions import UserDoesNotExistsError
-from shout_subgroup.utils import is_group_chat, replace_me_mentions, get_user_id_from_mention, \
-    UserIdMentionMapping, get_mention_from_user_id_mention_mappings, create_mention_from_user_id
+from shout_subgroup.utils import (is_group_chat, replace_me_mentions, get_user_id_from_mention,
+                                  UserIdMentionMapping, get_mention_from_user_id_mention_mappings,
+                                  create_mention_from_user_id)
 from test_helpers import create_test_user
 
 
@@ -106,7 +107,6 @@ async def test_get_user_id_from_mention_with_markdown_non_existent_user(db: Sess
 
 @pytest.mark.asyncio
 async def test_get_mention_from_user_id_single_match():
-
     # Given: We have mappings
     user_id = "123"
     mention = "@user123"
@@ -125,7 +125,6 @@ async def test_get_mention_from_user_id_single_match():
 
 @pytest.mark.asyncio
 async def test_get_mention_from_user_id_no_match():
-
     # Given: We have mappings
     user_id = "123"
     mention = "@user123"
@@ -145,7 +144,6 @@ async def test_get_mention_from_user_id_no_match():
 
 @pytest.mark.asyncio
 async def test_create_mention_from_user_id(db: Session):
-
     # Given: A users exist within our system
     jane = create_test_user(db, telegram_user_id=12345, username="janey", first_name="Jane", last_name="Doe")
 

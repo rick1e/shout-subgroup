@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from shout_subgroup.exceptions import NotGroupChatError
 from shout_subgroup.group_chat_listener import add_user_to_group_chat, remove_user_from_group_chat
 from shout_subgroup.models import UserModel
-from shout_subgroup.repository import find_group_chat_by_telegram_group_chat_id, find_all_users_in_subgroup
+from shout_subgroup.repository import find_group_chat_by_telegram_group_chat_id
 from test_helpers import create_test_user, create_test_group_chat, create_test_subgroup
 
 
@@ -188,38 +188,29 @@ async def test_remove_user_from_group_chat(db: Session):
     initial_group_chat_users = [john, jane]
     group_chat = create_test_group_chat(db, telegram_group_chat_id, telegram_group_chat_name, initial_group_chat_users)
 
-    # And: There are sub groups with the user in it
+    # And: There are subgroups with the user in it
     subgroup_names = ["Archery", "Bowling", "Cricket"]
-    for name in subgroup_names:
-        create_test_subgroup(db, group_chat.group_chat_id, name, [john])
-
-    # When: We try to remove the user from the group chat
-    betty = Mock()
-    betty.user_id = 12345
-    betty.username = "johndoe"
-    betty.first_name = "John"
-    betty.last_name = "Doe"
+    user_to_remove = john
+    created_subgroups = [
+        create_test_subgroup(db, group_chat.group_chat_id, name, [user_to_remove, jane])
+        for name in subgroup_names
+    ]
 
     telegram_chat = Mock()
     telegram_chat.id = telegram_group_chat_id
     telegram_chat.title = telegram_group_chat_name
     telegram_chat.description = telegram_group_chat_description
 
-    # When: The listener determines this
-    removed_user = await remove_user_from_group_chat(db, telegram_chat, betty)
+    # When: We remove the user from the group chat
+    removed_user = await remove_user_from_group_chat(db, telegram_chat, user_to_remove)
 
-    # Then: The user is removed from the group chat
-    assert removed_user.user_id is not None
-    actual_user = next((user for user in group_chat.users if user.username == betty.username), None)
-    assert actual_user is None
+    # Then: The user is removed from all subgroups
+    for subgroup in created_subgroups:
+        assert removed_user not in subgroup.users
 
-    # And: The user is removed from all sub groups
-    for name in subgroup_names:
-        users = await find_all_users_in_subgroup(db, telegram_group_chat_id, name)
-        for user in users:
-            assert user.username is not betty.username
-
-    # pass
+    # And: The user is removed from the group chat
+    assert removed_user.user_id == user_to_remove.user_id
+    assert removed_user not in group_chat.users
 
 
 @pytest.mark.asyncio
@@ -235,18 +226,19 @@ async def test_remove_user_from_group_chat_if_not_in_group_chat(db: Session):
     telegram_chat.title = telegram_group_chat_name
     telegram_chat.description = "Testing Chat"
 
-    initial_group_chat_users = [john]
+    initial_group_chat_users = [john, jane]
     create_test_group_chat(db, telegram_group_chat_id, telegram_group_chat_name, initial_group_chat_users)
 
-    # And: A user leaves the group chat before they were registered by the bot
-    betty = Mock()
-    betty.user_id = 12345
-    betty.username = "bettysue"
-    betty.first_name = "Betty"
-    betty.last_name = "Sue"
+    # And: A user leaves the group chat before they were registered by the bot and added to the group chat
+    user_who_was_not_registered = UserModel(
+        telegram_user_id=87654,
+        username="betty",
+        first_name="Betty",
+        last_name="White"
+    )
 
-    # When: The listener detects this
-    removed_user = await remove_user_from_group_chat(db, telegram_chat, betty)
+    # When: We remove the user from the group chat
+    removed_user = await remove_user_from_group_chat(db, telegram_chat, user_who_was_not_registered)
 
     # Then: A None should be returned b/c the user was never registered
     assert removed_user is None
@@ -255,22 +247,23 @@ async def test_remove_user_from_group_chat_if_not_in_group_chat(db: Session):
 @pytest.mark.asyncio
 async def test_remove_user_from_group_chat_throws_exception_for_non_group_chat(db: Session):
     # Given: A individual chat exists
-    individual_chat = 12345
+    individual_chat_id = 12345
     telegram_chat = Mock()
-    telegram_chat.id = individual_chat
+    telegram_chat.id = individual_chat_id
     telegram_chat.title = "Betty"
     telegram_chat.description = "Betty Chat"
 
     # And: A user exists
-    betty = Mock()
-    betty.user_id = 12345
-    betty.username = "bettysue"
-    betty.first_name = "Betty"
-    betty.last_name = "Sue"
+    current_user = UserModel(
+        telegram_user_id=87654,
+        username="betty",
+        first_name="Betty",
+        last_name="White"
+    )
 
     # When: The listener sees a user leave the chat
     with pytest.raises(NotGroupChatError) as ex:
-        await remove_user_from_group_chat(db, telegram_chat, betty)
+        await remove_user_from_group_chat(db, telegram_chat, current_user)
 
     # Then: An exception is thrown
     assert ex.value.message == f"Can't remove user from chat because telegram chat id {telegram_chat.id} is not a group chat."
