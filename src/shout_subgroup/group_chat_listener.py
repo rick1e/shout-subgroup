@@ -8,14 +8,13 @@ from shout_subgroup.exceptions import NotGroupChatError
 from shout_subgroup.models import UserModel
 from shout_subgroup.repository import (
     find_all_users_in_group_chat,
-    find_all_subgroups_in_group_chat,
-    find_users_by_usernames,
     find_group_chat_by_telegram_group_chat_id,
     insert_group_chat,
-    add_user_to_group_chat as add_user_to_group_chat_repo
+    add_user_to_group_chat as add_user_to_group_chat_repo, find_user_by_user_id,
+    remove_user_from_all_sub_groups_in_group_chat,
+    remove_user_from_group_chat as remove_user_from_group_chat_repo, find_user_by_telegram_user_id
 )
 from shout_subgroup.utils import is_group_chat
-from shout_subgroup.remove_subgroup_members import remove_users_from_existing_subgroup
 
 from shout_subgroup.database import get_database
 
@@ -47,28 +46,24 @@ async def remove_user_from_group_chat(db: Session, chat: Chat, current_user: Use
         logging.info(msg)
         raise NotGroupChatError(msg)
 
+    # Check if the group chat exists in our system, if not then there's nothing to be done
     group_chat = await find_group_chat_by_telegram_group_chat_id(db, chat.id)
-
     if not group_chat:
         return None
 
-    users_to_be_removed = await find_users_by_usernames(db, {current_user.username})
+    # Remove the user from the group chat if they're in it.
+    # Note: We have to find by the telegram id b/c when the
+    # listen_for_left_member_handler creates the UserModel the
+    # user_id does not exist yet.
+    user_to_be_removed = await find_user_by_telegram_user_id(db, current_user.telegram_user_id)
 
-    if len(users_to_be_removed) == 1:
+    if user_to_be_removed:
         # Remove user from all subgroups as well
-        await remove_user_from_all_group_chat_sub_groups(db, chat.id, users_to_be_removed[0])
-        group_chat.users.remove(users_to_be_removed[0])
-        db.commit()
-        db.refresh(group_chat)
-        return users_to_be_removed[0]
+        await remove_user_from_all_sub_groups_in_group_chat(db, chat.id, user_to_be_removed)
+        removed_user = await remove_user_from_group_chat_repo(db, group_chat, user_to_be_removed)
+        return removed_user
 
     return None
-
-
-async def remove_user_from_all_group_chat_sub_groups(db: Session, telegram_group_chat_id: int, user: UserModel) -> None:
-    subgroups = await find_all_subgroups_in_group_chat(db, telegram_group_chat_id)
-    for subgroup in subgroups:
-        await remove_users_from_existing_subgroup(db, telegram_group_chat_id, subgroup.name, {user.username})
 
 
 async def listen_for_messages_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
