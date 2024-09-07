@@ -38,5 +38,6 @@ jobs:
 
     - name: Push Docker image to GCR
       run: |
+        gcloud auth configure-docker ${{ vars.GCP_LOCATION }}-docker.pkg.dev
         docker tag app:latest ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
         docker push ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
