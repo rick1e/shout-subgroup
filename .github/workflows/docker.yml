@@ -24,13 +24,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-buildx-
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v3
-      with:
-        context: .
-        push: true
-        tags: ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
-
     - name: Authenticate to GCR
       uses: google-github-actions/auth@v0
       with:
@@ -39,5 +32,15 @@ jobs:
     - name: Push Docker image to GCR
       run: |
         gcloud auth configure-docker ${{ vars.GCP_LOCATION }}-docker.pkg.dev
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        push: true
+        tags: ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
+
+    - name: Push Docker image to GCR
+      run: |
         docker tag app:latest ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
         docker push ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
