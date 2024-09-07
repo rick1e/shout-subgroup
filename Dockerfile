@@ -13,7 +13,7 @@ ENV PYTHONUNBUFFERED=1
 
 # This environment variable is used to specify additional directories where
 # Python should look for modules and packages before using the standard modules.
-# ENV PYTHONPATH="/app/src:$PYTHONPATH"
+ENV PYTHONPATH="/app/src:$PYTHONPATH"
 
 # Set the working directory in the container
 WORKDIR $WORKDIR
