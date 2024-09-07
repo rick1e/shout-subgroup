@@ -40,13 +40,17 @@ jobs:
         push: true
         tags: ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
 
-    - name: SSH to GCE and deploy container
-      uses: google-github-actions/ssh@v0.5.0
-      with:
-        host: ${{ secrets.GCE_INSTANCE_IP }}
-        username: ${{ secrets.GCE_SSH_USER }}
-        key: ${{ secrets.GCE_SSH_KEY }}
-        script: |
+    - name: Deploy to GCE VM
+      env:
+        GCE_SSH_PRIVATE_KEY: ${{ secrets.GCE_SSH_KEY }}
+        GCE_INSTANCE_IP: ${{ secrets.GCE_INSTANCE_IP }}
+        GCE_SSH_USER: ${{ secrets.GCE_SSH_USER }}
+      run: |
+        echo "$GCE_SSH_PRIVATE_KEY" > id_rsa
+        chmod 600 id_rsa
+        
+        # SSH into the GCE VM and deploy the Docker container
+        ssh -i id_rsa -o StrictHostKeyChecking=no $GCE_SSH_USER@$GCE_INSTANCE_IP << 'EOF'
           sudo docker pull ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
           sudo docker stop ${{ vars.GCP_CONTAINER_NAME }} || true
           sudo docker rm ${{ vars.GCP_CONTAINER_NAME }} || true
@@ -57,3 +61,4 @@ jobs:
             -e POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}' \
             -e POSTGRES_DB=${{ vars.POSTGRES_DB }} \
             ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
+        EOF
