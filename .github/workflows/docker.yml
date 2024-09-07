@@ -25,7 +25,7 @@ jobs:
           ${{ runner.os }}-buildx-
 
     - name: Authenticate to GCR
-      uses: google-github-actions/auth@v0
+      uses: google-github-actions/auth@v1
       with:
         credentials_json: ${{ secrets.GCP_CREDENTIALS }}
 
@@ -39,3 +39,23 @@ jobs:
         context: .
         push: true
         tags: ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
+
+    - name: Pull the latest image
+      run: docker pull ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
+
+    - name: Shutdown existing container
+      run: |
+        if [ "$(docker ps -q -f name="${{ vars.GCP_CONTAINER_NAME }}")" ]; then
+          docker stop ${{ vars.GCP_CONTAINER_NAME }}
+          docker rm ${{ vars.GCP_CONTAINER_NAME }}
+        fi
+
+    - name: Run new container
+      run: |
+        docker run -d --name ${{ vars.GCP_CONTAINER_NAME }} \
+        -e TELEGRAM_API_KEY=${{ secrets.TELEGRAM_API_KEY }} \
+        -e POSTGRES_CONTAINER=${{ vars.POSTGRES_CONTAINER }} \
+        -e POSTGRES_USER=${{ vars.POSTGRES_USER }} \
+        -e POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}' \
+        -e POSTGRES_DB=${{ vars.POSTGRES_DB }} \
+        ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
