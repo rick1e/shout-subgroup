@@ -24,12 +24,12 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-buildx-
 
-    - name: Authenticate to GCR
+    - name: Authenticate to GAR
       uses: google-github-actions/auth@v1
       with:
         credentials_json: ${{ secrets.GCP_CREDENTIALS }}
 
-    - name: Push Docker image to GCR
+    - name: Push Docker image to GAR
       run: |
         gcloud auth configure-docker ${{ vars.GCP_LOCATION }}-docker.pkg.dev
 
@@ -39,6 +39,11 @@ jobs:
         context: .
         push: true
         tags: ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
+
+    - name: Prune unused Docker images
+      run: |
+        # Prune dangling images (images not tagged and not referenced by any container)
+        docker image prune -f
 
     - name: Deploy to GCE VM
       env:
