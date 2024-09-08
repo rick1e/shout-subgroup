@@ -3,7 +3,7 @@ name: Build and Deploy Docker Image
 on:
   push:
     branches:
-      - issue-GCP
+      - main
 
 jobs:
   build:
@@ -66,4 +66,5 @@ jobs:
             -e POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}' \
             -e POSTGRES_DB=${{ vars.POSTGRES_DB }} \
             ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
+          sudo docker image prune -f
         EOF
