@@ -8,7 +8,7 @@ from shout_subgroup.exceptions import (
     NotGroupChatError,
     SubGroupExistsError,
     UserDoesNotExistsError,
-    SubGroupDoesNotExistsError
+    SubGroupDoesNotExistsError, InvalidSubGroupNameError
 )
 from shout_subgroup.models import SubgroupModel
 from shout_subgroup.repository import (find_subgroup_by_telegram_group_chat_id_and_subgroup_name,
@@ -50,12 +50,22 @@ async def _handle_create_subgroup(
     return
 
 
+def _is_valid_subgroup_name(subgroup_name: str) -> bool:
+    return "@" not in subgroup_name
+
+
 async def create_subgroup(
         db: Session,
         telegram_chat: Chat,
         subgroup_name: str,
         user_ids: set[int | None]
 ) -> SubgroupModel:
+
+    if not _is_valid_subgroup_name(subgroup_name):
+        msg = f"'{subgroup_name}' subgroup name cannot have @ characters in it."
+        logging.info(msg)
+        raise InvalidSubGroupNameError(msg)
+
     telegram_chat_id = telegram_chat.id
     if not await is_group_chat(telegram_chat_id):
         msg = f"Can't create subgroup because telegram chat id {telegram_chat_id} is not a group chat."
@@ -225,6 +235,10 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     except SubGroupDoesNotExistsError:
         msg = f"Whoops 🧐, we couldn't find subgroup {subgroup_name}. Something went wrong on our side."
+        await update.message.reply_text(msg)
+
+    except InvalidSubGroupNameError:
+        msg = f"'{subgroup_name}' has a @ in the name. That's not allowed, please use a different name."
         await update.message.reply_text(msg)
 
     except Exception:
