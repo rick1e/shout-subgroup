@@ -1,0 +1,65 @@
+name: Build and Deploy Docker Image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Cache Docker layers
+      uses: actions/cache@v3
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+
+    - name: Authenticate to GAR
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+    - name: Push Docker image to GAR
+      run: |
+        gcloud auth configure-docker ${{ vars.GCP_LOCATION }}-docker.pkg.dev
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        push: true
+        tags: ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
+
+    - name: Deploy to GCE VM
+      env:
+        GCE_SSH_PRIVATE_KEY: ${{ secrets.GCE_SSH_KEY }}
+        GCE_INSTANCE_IP: ${{ secrets.GCE_INSTANCE_IP }}
+        GCE_SSH_USER: ${{ secrets.GCE_SSH_USER }}
+      run: |
+        echo "$GCE_SSH_PRIVATE_KEY" > id_rsa
+        chmod 600 id_rsa
+        
+        # SSH into the GCE VM and deploy the Docker container
+        ssh -i id_rsa -o StrictHostKeyChecking=no $GCE_SSH_USER@$GCE_INSTANCE_IP << 'EOF'
+          sudo docker pull ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
+          sudo docker stop ${{ vars.GCP_CONTAINER_NAME }} || true
+          sudo docker rm ${{ vars.GCP_CONTAINER_NAME }} || true
+          sudo docker run -d --name ${{ vars.GCP_CONTAINER_NAME }} \
+            -e TELEGRAM_API_KEY=${{ secrets.TELEGRAM_API_KEY }} \
+            -e POSTGRES_CONTAINER=${{ vars.POSTGRES_CONTAINER }} \
+            -e POSTGRES_USER=${{ vars.POSTGRES_USER }} \
+            -e POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}' \
+            -e POSTGRES_DB=${{ vars.POSTGRES_DB }} \
+            ${{ vars.GCP_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_REPOSITORY }}/app:latest
+          sudo docker image prune -f
+        EOF
