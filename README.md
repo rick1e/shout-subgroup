@@ -17,13 +17,13 @@ Installation guides can be found on their site.
 After Rye is installed, you run the following:
 1. Initialize the virtual environment and download the dependencies
 `rye sync`
-2. Run the application via a run script
-`rye run dev`
+2. Build and run the application via a run script
+`rye run build`
 3. Stop the application via a run script
 `rye run stop`
 
 ### B. Spinning Docker up manually
-You can run the application as a docker containers with the following.
+You can build and run the application as a docker containers with the following.
 ```shell
 docker-compose up -d --build 
 ```
@@ -38,4 +38,26 @@ docker-compose up -d
 Use the following command to build the image
 ```shell
 docker build . -t <tag-the-image>
-```     
+```
+
+## Running the database
+You can run the database separately from the application. To do so run
+`rye run db`
+
+Alternatively, if you need more control you can do the steps below
+`docker-compose up db -d`
+
+After the database starts, it will have no tables. You'll need to
+run the migration. See the [Running database migrations](#running-database-migrations)
+
+### Running database migrations
+We use [Alembic](https://alembic.sqlalchemy.org/en/latest/index.html#) to handle migrations.
+Alembic will autogenerate schemas for us whenever we change the database model.
+
+Make sure the `MIGRATE` environment variable is set to "true"
+
+Create an alembic revision
+`alembic revision --autogenerate -m <revision message>`
+
+After the revision is created, run below to apply the changes
+`alembic upgrade head`

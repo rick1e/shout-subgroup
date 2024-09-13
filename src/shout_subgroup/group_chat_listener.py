@@ -4,25 +4,25 @@ from sqlalchemy.orm import Session
 from telegram import Update, Chat
 from telegram.ext import ContextTypes
 
+from shout_subgroup.database import get_database
 from shout_subgroup.exceptions import NotGroupChatError
 from shout_subgroup.models import UserModel
 from shout_subgroup.repository import (
     find_all_users_in_group_chat,
     find_group_chat_by_telegram_group_chat_id,
     insert_group_chat,
-    add_user_to_group_chat as add_user_to_group_chat_repo, find_user_by_user_id,
-    remove_user_from_all_sub_groups_in_group_chat,
+    add_user_to_group_chat as add_user_to_group_chat_repo, remove_user_from_all_sub_groups_in_group_chat,
     remove_user_from_group_chat as remove_user_from_group_chat_repo, find_user_by_telegram_user_id
 )
 from shout_subgroup.utils import is_group_chat
 
-from shout_subgroup.database import get_database
+logger = logging.getLogger(__name__)
 
 
 async def add_user_to_group_chat(db: Session, chat: Chat, current_user: UserModel) -> UserModel | None:
     if not await is_group_chat(chat.id):
         msg = f"Can't add user to group because telegram chat id {chat.id} is not a group chat."
-        logging.info(msg)
+        logger.info(msg)
         raise NotGroupChatError(msg)
 
     # Check if the group chat exists in our system, if not we need to add it
@@ -35,7 +35,9 @@ async def add_user_to_group_chat(db: Session, chat: Chat, current_user: UserMode
     telegram_user_ids_in_group_chat = {user.telegram_user_id for user in all_users}
 
     if current_user.telegram_user_id not in telegram_user_ids_in_group_chat:
-        return await add_user_to_group_chat_repo(db, group_chat, current_user)
+        added_user = await add_user_to_group_chat_repo(db, group_chat, current_user)
+        logger.info(f"Adding user_id '{added_user.user_id}' to group_chat_id '{group_chat.group_chat_id}'")
+        return added_user
 
     return None
 
@@ -43,7 +45,7 @@ async def add_user_to_group_chat(db: Session, chat: Chat, current_user: UserMode
 async def remove_user_from_group_chat(db: Session, chat: Chat, current_user: UserModel) -> UserModel | None:
     if not await is_group_chat(chat.id):
         msg = f"Can't remove user from chat because telegram chat id {chat.id} is not a group chat."
-        logging.info(msg)
+        logger.info(msg)
         raise NotGroupChatError(msg)
 
     # Check if the group chat exists in our system, if not then there's nothing to be done

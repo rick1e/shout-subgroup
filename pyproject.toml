@@ -25,6 +25,7 @@ dev-dependencies = [
     "pytest==8.2.2",
     "pytest-asyncio==0.23.7",
     "pytest-xdist>=3.6.1",
+    "alembic==1.13.2"
 ]
 
 [tool.hatch.metadata]
@@ -32,3 +33,12 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/shout_subgroup"]
+
+[tool.rye.scripts]
+build = " docker-compose up -d --build"
+start = " docker-compose up -d"
+start-db = "docker-compose up db -d"
+mig-db = "alembic upgrade head"
+sleep = "sleep 5"
+db = { chain = ["start-db", "sleep", "mig-db"] }
+stop = " docker-compose down"
