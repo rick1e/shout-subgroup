@@ -19,19 +19,31 @@ ENV PYTHONPATH="/app/src:$PYTHONPATH"
 WORKDIR $WORKDIR
 
 # Copy the requirements and src code
-COPY requirements.lock ./
+COPY requirements-dev.lock ./
 COPY pyproject.toml ./
+COPY alembic.ini ./
+COPY entrypoint.sh ./
 COPY README.md ./
+COPY alembic alembic
 COPY src src
+
+# Make the entrypoint script executable
+RUN chmod +x $WORKDIR/entrypoint.sh
 
 # Install uv. UV is a super fast package manager in the Python ecosystem.
 # It also works with pip and pip tools.
 RUN pip install uv
 # UV will create a .venv directory for us. We need to add it to system path to gain access to the binaries
 ENV PATH="$WORKDIR/.venv/bin:$PATH"
-RUN uv venv && uv pip install --no-cache-dir -r requirements.lock
+RUN uv venv && uv pip install --no-cache-dir -r requirements-dev.lock
 
-# Make HTTP and Redis ports available to the world outside this container
+RUN pwd
+RUN ls -al
+
+# Set the entrypoint to the script
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# Make HTTP port available to the world outside this container
 EXPOSE 80
 
 # Run app.py when the container launches

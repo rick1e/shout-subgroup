@@ -1,3 +1,4 @@
+import logging
 import os
 
 from dotenv import load_dotenv
@@ -16,8 +17,15 @@ from shout_subgroup.database import configure_database
 load_dotenv()
 TOKEN = os.getenv('TELEGRAM_API_KEY')
 
+logger = logging.getLogger(__name__)
+
 
 def main() -> None:
+    # Set up logging configuration
+    logging.basicConfig(
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        level=logging.INFO
+    )
 
     if not configure_database():
         exit(1)
@@ -33,6 +41,8 @@ def main() -> None:
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, listen_for_new_member_handler))
     app.add_handler(MessageHandler(filters.StatusUpdate.LEFT_CHAT_MEMBER, listen_for_left_member_handler))
 
+    logger.info("Built application")
+    logger.info("Starting application")
     app.run_polling()
 
 

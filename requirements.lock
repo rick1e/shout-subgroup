@@ -13,8 +13,6 @@ anyio==4.4.0
 certifi==2024.6.2
     # via httpcore
     # via httpx
-greenlet==3.0.3
-    # via sqlalchemy
 h11==0.14.0
     # via httpcore
 httpcore==1.0.5
