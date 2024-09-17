@@ -18,11 +18,6 @@ ENV PYTHONPATH="/app/src:$PYTHONPATH"
 # Set the working directory in the container
 WORKDIR $WORKDIR
 
-# Install necessary tools including netcat
-# We use netcat to check if the db is running prior
-# to running the migration tool
-RUN apt-get update && apt-get install -y netcat-openbsd
-
 # Copy the requirements and src code
 COPY requirements-dev.lock ./
 COPY pyproject.toml ./
@@ -41,6 +36,9 @@ RUN pip install uv
 # UV will create a .venv directory for us. We need to add it to system path to gain access to the binaries
 ENV PATH="$WORKDIR/.venv/bin:$PATH"
 RUN uv venv && uv pip install --no-cache-dir -r requirements-dev.lock
+
+RUN pwd
+RUN ls -al
 
 # Set the entrypoint to the script
 ENTRYPOINT ["/app/entrypoint.sh"]
