@@ -69,18 +69,19 @@ async def shout_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     :return:
     """
     args = context.args
-    session = get_database()
+    db_session = get_database()
 
-    telegram_chat_id = update.effective_chat.id
+    with db_session.begin() as session:
+        telegram_chat_id = update.effective_chat.id
 
-    if len(args) == 1:
-        subgroup_name = args[0]
-        message = await shout_subgroup_members(session, telegram_chat_id, subgroup_name)
+        if len(args) == 1:
+            subgroup_name = args[0]
+            message = await shout_subgroup_members(session, telegram_chat_id, subgroup_name)
 
-        await update.message.reply_text(message, parse_mode='markdown')
-        return
+            await update.message.reply_text(message, parse_mode='markdown')
+            return
 
-    else:
-        message = await shout_all_members(session, telegram_chat_id)
-        await update.message.reply_text(message, parse_mode='markdown')
-        return
+        else:
+            message = await shout_all_members(session, telegram_chat_id)
+            await update.message.reply_text(message, parse_mode='markdown')
+            return

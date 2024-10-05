@@ -88,41 +88,46 @@ async def listen_for_messages_handler(update: Update, context: ContextTypes.DEFA
         last_name=update.message.from_user.last_name
     )
 
-    session = get_database()
-    try:
-        maybe_added_user = await add_user_to_group_chat(session, update.effective_chat, user_who_sent_the_message)
-        # TODO: Add message like "The bot has recognized John Doe"
-        return
-    except NotGroupChatError:
-        # await update.message.reply_text("Sorry, you can only create or modify subgroups in group chats.")
-        return
+    db_session = get_database()
+
+    with db_session.begin() as session:
+        try:
+            maybe_added_user = await add_user_to_group_chat(session, update.effective_chat, user_who_sent_the_message)
+            # TODO: Add message like "The bot has recognized John Doe"
+            return
+        except NotGroupChatError:
+            # await update.message.reply_text("Sorry, you can only create or modify subgroups in group chats.")
+            return
 
 
 async def listen_for_new_member_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    session = get_database()
+    db_session = get_database()
 
-    for member in update.message.new_chat_members:
-        new_user = UserModel(
+    with db_session.begin() as session:
+        for member in update.message.new_chat_members:
+            new_user = UserModel(
+                telegram_user_id=member.id,
+                username=member.username,
+                first_name=member.first_name,
+                last_name=member.last_name)
+
+            maybe_added_user = await add_user_to_group_chat(session, update.effective_chat, new_user)
+
+            if maybe_added_user is not None:
+                await update.message.reply_text(f'Welcome {maybe_added_user.username}!')
+
+
+async def listen_for_left_member_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    db_session = get_database()
+
+    with db_session.begin() as session:
+        member = update.message.left_chat_member
+        left_user = UserModel(
             telegram_user_id=member.id,
             username=member.username,
             first_name=member.first_name,
             last_name=member.last_name)
 
-        maybe_added_user = await add_user_to_group_chat(session, update.effective_chat, new_user)
-
-        if maybe_added_user is not None:
-            await update.message.reply_text(f'Welcome {maybe_added_user.username}!')
-
-
-async def listen_for_left_member_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    session = get_database()
-    member = update.message.left_chat_member
-    left_user = UserModel(
-        telegram_user_id=member.id,
-        username=member.username,
-        first_name=member.first_name,
-        last_name=member.last_name)
-
-    maybe_removed_user = await remove_user_from_group_chat(session, update.effective_chat, left_user)
-    if maybe_removed_user is not None:
-        await update.message.reply_text(f'Goodbye {maybe_removed_user.username}!')
+        maybe_removed_user = await remove_user_from_group_chat(session, update.effective_chat, left_user)
+        if maybe_removed_user is not None:
+            await update.message.reply_text(f'Goodbye {maybe_removed_user.username}!')
