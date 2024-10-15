@@ -137,7 +137,7 @@ async def insert_user(
         last_name=last_name
     )
     db.add(new_user)
-    db.commit()
+    db.flush()
     db.refresh(new_user)
     return new_user
 
@@ -208,7 +208,7 @@ async def insert_group_chat(db: Session,
     )
 
     db.add(new_group_chat)
-    db.commit()
+    db.flush()
     db.refresh(new_group_chat)  # Refresh to get the ID and other generated values
     return new_group_chat
 
@@ -291,7 +291,7 @@ async def add_user_to_group_chat(db: Session, group_chat: GroupChatModel, curren
         current_user.last_name
     )
     group_chat.users.append(added_user)
-    db.commit()
+    db.flush()
     db.refresh(added_user)
     return added_user
 

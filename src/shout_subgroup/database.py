@@ -33,13 +33,12 @@ def configure_database() -> bool:
         logger.exception(f"Unable to connect to postgreSQL. See exception details ... {ex}")
         return False
 
-    global session
+    global Session
 
-    session_maker = sessionmaker(bind=engine)
-    session = session_maker()
+    Session = sessionmaker(bind=engine, expire_on_commit=False)
 
     return True
 
 
 def get_database():
-    return session
+    return Session
