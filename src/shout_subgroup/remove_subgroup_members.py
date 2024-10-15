@@ -26,68 +26,70 @@ async def remove_subgroup_member_handler(update: Update, context: ContextTypes.D
     :return:
     """
     args = context.args
-    session = get_database()
+    db_session = get_database()
 
-    # Quick guard clause
-    if len(args) < 2:
-        msg = "You didn't use this command correctly. Please type /kick <group_name> @alice @bob ... @zack"
-        await update.message.reply_text(msg)
-        return
+    with db_session.begin() as session:
 
-    subgroup_name = args[0]
+        # Quick guard clause
+        if len(args) < 2:
+            msg = "You didn't use this command correctly. Please type /kick <group_name> @alice @bob ... @zack"
+            await update.message.reply_text(msg)
+            return
 
-    # The text markdown contains the username if it exists.
-    # When a user doesn't have a username, telegram uses an url
-    # [John](tg://user?id=12345678). We'll pull the user_id
-    # either from the username or the URL
-    user_mentions = set(update.effective_message.text_markdown_v2.split()[2:])
-    formatted_user_mentions = await replace_me_mentions(user_mentions, update.effective_user)
+        subgroup_name = args[0]
 
-    if not await are_mentions_valid(formatted_user_mentions):
-        await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
+        # The text markdown contains the username if it exists.
+        # When a user doesn't have a username, telegram uses an url
+        # [John](tg://user?id=12345678). We'll pull the user_id
+        # either from the username or the URL
+        user_mentions = set(update.effective_message.text_markdown_v2.split()[2:])
+        formatted_user_mentions = await replace_me_mentions(user_mentions, update.effective_user)
 
-    users_ids_and_mentions: set[UserIdMentionMapping] = {
-        await get_user_id_from_mention(session, mention)
-        for mention in formatted_user_mentions
-    }
+        if not await are_mentions_valid(formatted_user_mentions):
+            await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
 
-    try:
+        users_ids_and_mentions: set[UserIdMentionMapping] = {
+            await get_user_id_from_mention(session, mention)
+            for mention in formatted_user_mentions
+        }
 
-        user_ids: set[str | None] = {id_and_mention.user_id for id_and_mention in users_ids_and_mentions}
-        subgroup = await remove_users_from_existing_subgroup(
-            session,
-            update.effective_chat.id,
-            subgroup_name,
-            user_ids
-        )
+        try:
 
-        subgroup_usernames = [f"@{user.username}" for user in subgroup.users]
-        joined_usernames = ", ".join(subgroup_usernames)
-        msg = (
-            f"Subgroup {subgroup.name} now has the following members {joined_usernames}"
-            if subgroup.users
-            else f"Subgroup '{subgroup.name}' has no members"
-        )
-        await update.message.reply_text(msg)
-        return
+            user_ids: set[str | None] = {id_and_mention.user_id for id_and_mention in users_ids_and_mentions}
+            subgroup = await remove_users_from_existing_subgroup(
+                session,
+                update.effective_chat.id,
+                subgroup_name,
+                user_ids
+            )
 
-    except NotGroupChatError:
-        await update.message.reply_text("Sorry, you can only create or modify subgroups in group chats.")
-        return
+            subgroup_usernames = [f"@{user.username}" for user in subgroup.users]
+            joined_usernames = ", ".join(subgroup_usernames)
+            msg = (
+                f"Subgroup {subgroup.name} now has the following members {joined_usernames}"
+                if subgroup.users
+                else f"Subgroup '{subgroup.name}' has no members"
+            )
+            await update.message.reply_text(msg)
+            return
 
-    except SubGroupDoesNotExistsError:
-        msg = f"I can't kick members because subgroup '{subgroup_name}' does not exist"
-        await update.message.reply_text(msg)
+        except NotGroupChatError:
+            await update.message.reply_text("Sorry, you can only create or modify subgroups in group chats.")
+            return
 
-    except UserDoesNotExistsError:
-        msg = (f"We don't have a record for some of the users. "
-               f"We can only remove users we know about. "
-               f"Please tell some or all the users to send a message to this chat.")
-        await update.message.reply_text(msg)
+        except SubGroupDoesNotExistsError:
+            msg = f"I can't kick members because subgroup '{subgroup_name}' does not exist"
+            await update.message.reply_text(msg)
 
-    except Exception:
-        logging.exception("An unexpected exception occurred")
-        await update.message.reply_text("Whoops 😅, something went wrong on our side.")
+        except UserDoesNotExistsError:
+            msg = (f"We don't have a record for some of the users. "
+                   f"We can only remove users we know about. "
+                   f"Please tell some or all the users to send a message to this chat.")
+            await update.message.reply_text(msg)
+
+        except Exception:
+            logging.exception("An unexpected exception occurred")
+            await update.message.reply_text("Whoops 😅, something went wrong on our side.")
 
 
 async def remove_users_from_existing_subgroup(

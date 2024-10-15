@@ -183,66 +183,68 @@ async def subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     """
 
     args = context.args
-    session = get_database()
+    db_session = get_database()
 
-    # Quick guard clause
-    if len(args) < 2:
-        msg = "You didn't use this command correctly. Please type /group <group_name> @alice @bob ... @zack"
-        await update.message.reply_text(msg)
-        return
+    with db_session.begin() as session:
 
-    subgroup_name = args[0]
-
-    # The text markdown contains the username if it exists.
-    # When a user doesn't have a username, telegram uses an url
-    # [John](tg://user?id=12345678). We'll pull the user_id
-    # either from the username or the URL
-    user_mentions = set(update.effective_message.text_markdown_v2.split()[2:])
-    formatted_user_mentions = await replace_me_mentions(user_mentions, update.effective_user)
-
-    if not await are_mentions_valid(formatted_user_mentions):
-        await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
-
-    users_ids_and_mentions: set[UserIdMentionMapping] = {
-        await get_user_id_from_mention(session, mention)
-        for mention in formatted_user_mentions
-    }
-
-    try:
-
-        is_existing_subgroup = await does_subgroup_exist(session, update.effective_chat.id, subgroup_name)
-        if is_existing_subgroup:
-            await _handle_add_users_to_existing_subgroup(session, update, subgroup_name, users_ids_and_mentions)
-            return
-        else:
-            await _handle_create_subgroup(session, update, subgroup_name, users_ids_and_mentions)
+        # Quick guard clause
+        if len(args) < 2:
+            msg = "You didn't use this command correctly. Please type /group <group_name> @alice @bob ... @zack"
+            await update.message.reply_text(msg)
             return
 
-    except NotGroupChatError:
-        await update.message.reply_text("Sorry, you can only create or modify subgroups in group chats.")
-        return
+        subgroup_name = args[0]
 
-    except SubGroupExistsError:
-        await update.message.reply_text(
-            f'"{subgroup_name}" group already exists. Remove the group if you want to recreate it'
-        )
+        # The text markdown contains the username if it exists.
+        # When a user doesn't have a username, telegram uses an url
+        # [John](tg://user?id=12345678). We'll pull the user_id
+        # either from the username or the URL
+        user_mentions = set(update.effective_message.text_markdown_v2.split()[2:])
+        formatted_user_mentions = await replace_me_mentions(user_mentions, update.effective_user)
 
-    except UserDoesNotExistsError:
-        msg = (f"We don't have a record for some of the users. "
-               f"We can only add users we know about. "
-               f"Please tell some or all the users to send a message to this chat.")
-        await update.message.reply_text(msg)
+        if not await are_mentions_valid(formatted_user_mentions):
+            await update.message.reply_text("Not all the usernames are valid. Please re-check what you entered.")
 
-    except SubGroupDoesNotExistsError:
-        msg = f"Whoops 🧐, we couldn't find subgroup {subgroup_name}. Something went wrong on our side."
-        await update.message.reply_text(msg)
+        users_ids_and_mentions: set[UserIdMentionMapping] = {
+            await get_user_id_from_mention(session, mention)
+            for mention in formatted_user_mentions
+        }
 
-    except InvalidSubGroupNameError:
-        msg = f"'{subgroup_name}' has a @ in the name. That's not allowed, please use a different name."
-        await update.message.reply_text(msg)
+        try:
 
-    except Exception:
-        logging.exception("An unexpected exception occurred")
-        await update.message.reply_text("Whoops 😅, something went wrong on our side.")
+            is_existing_subgroup = await does_subgroup_exist(session, update.effective_chat.id, subgroup_name)
+            if is_existing_subgroup:
+                await _handle_add_users_to_existing_subgroup(session, update, subgroup_name, users_ids_and_mentions)
+                return
+            else:
+                await _handle_create_subgroup(session, update, subgroup_name, users_ids_and_mentions)
+                return
+
+        except NotGroupChatError:
+            await update.message.reply_text("Sorry, you can only create or modify subgroups in group chats.")
+            return
+
+        except SubGroupExistsError:
+            await update.message.reply_text(
+                f'"{subgroup_name}" group already exists. Remove the group if you want to recreate it'
+            )
+
+        except UserDoesNotExistsError:
+            msg = (f"We don't have a record for some of the users. "
+                   f"We can only add users we know about. "
+                   f"Please tell some or all the users to send a message to this chat.")
+            await update.message.reply_text(msg)
+
+        except SubGroupDoesNotExistsError:
+            msg = f"Whoops 🧐, we couldn't find subgroup {subgroup_name}. Something went wrong on our side."
+            await update.message.reply_text(msg)
+
+        except InvalidSubGroupNameError:
+            msg = f"'{subgroup_name}' has a @ in the name. That's not allowed, please use a different name."
+            await update.message.reply_text(msg)
+
+        except Exception:
+            logging.exception("An unexpected exception occurred")
+            await update.message.reply_text("Whoops 😅, something went wrong on our side.")
 
 

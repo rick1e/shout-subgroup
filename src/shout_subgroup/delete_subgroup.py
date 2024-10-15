@@ -42,38 +42,40 @@ async def remove_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_
     """
 
     args = context.args
-    session = get_database()
+    db_session = get_database()
 
-    # Quick guard clause
-    if len(args) < 1:
-        msg = "You didn't use this command correctly. Please type /delete <group_name>"
-        await update.message.reply_text(msg)
-        return
+    with db_session.begin() as session:
 
-    subgroup_name = args[0]
-
-    try:
-        is_deleted = await remove_subgroup(session, update.effective_chat.id, subgroup_name)
-
-        if is_deleted:
-            await update.message.reply_text(f"Subgroup '{subgroup_name}' was deleted")
+        # Quick guard clause
+        if len(args) < 1:
+            msg = "You didn't use this command correctly. Please type /delete <group_name>"
+            await update.message.reply_text(msg)
             return
 
-        msg = (f"The remove_subgroup function returned {is_deleted}, when it should have returned True or throw an "
-               f"exception.")
-        logging.error(msg)
+        subgroup_name = args[0]
 
-        raise RuntimeError(msg)
+        try:
+            is_deleted = await remove_subgroup(session, update.effective_chat.id, subgroup_name)
 
-    except NotGroupChatError:
-        await update.message.reply_text("Sorry, you can only create or modify subgroups in group chats.")
-        return
+            if is_deleted:
+                await update.message.reply_text(f"Subgroup '{subgroup_name}' was deleted")
+                return
 
-    except SubGroupDoesNotExistsError:
-        msg = f"I can't delete subgroup '{subgroup_name}' because it does not exist"
-        await update.message.reply_text(msg)
-        return
+            msg = (f"The remove_subgroup function returned {is_deleted}, when it should have returned True or throw an "
+                   f"exception.")
+            logging.error(msg)
 
-    except Exception:
-        logging.exception("An unexpected exception occurred")
-        await update.message.reply_text("Whoops 😅, something went wrong on our side.")
+            raise RuntimeError(msg)
+
+        except NotGroupChatError:
+            await update.message.reply_text("Sorry, you can only create or modify subgroups in group chats.")
+            return
+
+        except SubGroupDoesNotExistsError:
+            msg = f"I can't delete subgroup '{subgroup_name}' because it does not exist"
+            await update.message.reply_text(msg)
+            return
+
+        except Exception:
+            logging.exception("An unexpected exception occurred")
+            await update.message.reply_text("Whoops 😅, something went wrong on our side.")

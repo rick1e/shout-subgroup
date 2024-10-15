@@ -109,22 +109,24 @@ async def list_subgroup_handler(update: Update, context: ContextTypes.DEFAULT_TY
     args = context.args
     chat_id = update.effective_chat.id
     subgroup_name = args[0] if len(args) == 1 else ""
-    session = get_database()
+    db_session = get_database()
 
-    try:
-        # If the subgroup name doesn't exist, we'll default to listing the subgroups
-        if subgroup_name:
-            await _handle_list_subgroup_members(update, session, chat_id, subgroup_name)
-        else:
-            await _handle_list_subgroups(update, session, chat_id)
+    with db_session.begin() as session:
 
-    except NotGroupChatError:
-        await update.message.reply_text("Sorry, you can only list subgroups in group chats.")
-        return
-    except SubGroupDoesNotExistsError:
-        await update.message.reply_text(f"Subgroup '{subgroup_name}' does not exist.")
-        return
-    except Exception:
-        logging.exception("An unexpected exception occurred")
-        await update.message.reply_text("Whoops 😅, something went wrong on our side.")
-        return
+        try:
+            # If the subgroup name doesn't exist, we'll default to listing the subgroups
+            if subgroup_name:
+                await _handle_list_subgroup_members(update, session, chat_id, subgroup_name)
+            else:
+                await _handle_list_subgroups(update, session, chat_id)
+
+        except NotGroupChatError:
+            await update.message.reply_text("Sorry, you can only list subgroups in group chats.")
+            return
+        except SubGroupDoesNotExistsError:
+            await update.message.reply_text(f"Subgroup '{subgroup_name}' does not exist.")
+            return
+        except Exception:
+            logging.exception("An unexpected exception occurred")
+            await update.message.reply_text("Whoops 😅, something went wrong on our side.")
+            return

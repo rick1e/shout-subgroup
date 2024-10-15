@@ -154,7 +154,7 @@ async def insert_subgroup(
         users=users
     )
     db.add(new_subgroup)
-    db.commit()
+    db.flush()
     db.refresh(new_subgroup)
     return new_subgroup
 
@@ -187,11 +187,11 @@ async def delete_subgroup(
     # This is a cascading delete.
     # We'll remove the users in the subgroup prior to deletion
     subgroup.users.clear()
-    db.commit()
+    db.flush()
 
     # Delete the subgroup
     db.delete(subgroup)
-    db.commit()
+    db.flush()
 
     return True
 
@@ -237,7 +237,7 @@ async def remove_users_from_subgroup(db: Session, subgroup: SubgroupModel, user_
             subgroup.users.remove(user)
 
     # Commit the transaction
-    db.commit()
+    db.flush()
     db.refresh(subgroup)
 
     return subgroup
@@ -267,7 +267,7 @@ async def add_users_to_subgroup(db: Session, subgroup: SubgroupModel, user_ids: 
             subgroup.users.append(user)
 
     # Commit the transaction
-    db.commit()
+    db.flush()
     db.refresh(subgroup)
 
     return subgroup
@@ -306,6 +306,6 @@ async def remove_user_from_all_sub_groups_in_group_chat(db: Session,
 
 async def remove_user_from_group_chat(db: Session, group_chat: GroupChatModel, user_to_be_removed: UserModel):
     group_chat.users.remove(user_to_be_removed)
-    db.commit()
+    db.flush()
     db.refresh(group_chat)
     return user_to_be_removed
