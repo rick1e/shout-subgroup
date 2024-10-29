@@ -1,0 +1,6 @@
+shout - Mentions all the members of the group chat or specified subgroup.
+group - Used to create or add members to a subgroup.
+list - Shows all existing subgroups.
+kick - Removes a member from a subgroup.
+delete - Removes a subgroup.
+help - Gives more detailed information about the bot.
