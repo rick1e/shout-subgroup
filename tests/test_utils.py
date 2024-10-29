@@ -59,6 +59,33 @@ async def test_get_user_id_from_mention_with_username(db: Session):
     # Then: The correct user_id is found
     assert result == UserIdMentionMapping(mention=mention, user_id=john.user_id)
 
+@pytest.mark.asyncio
+async def test_get_user_id_from_mention_with_different_case_username(db: Session):
+    # Given: A users exist within our system
+    john = create_test_user(db, telegram_user_id=12345, username="JohnDoe", first_name="John", last_name="Doe")
+
+    # And: We mention them by username
+    mention = "@johndoe"
+
+    # When: We convert from their mention text to their id
+    result = await get_user_id_from_mention(db, mention)
+
+    # Then: The correct user_id is found
+    assert result == UserIdMentionMapping(mention=mention, user_id=john.user_id)
+
+@pytest.mark.asyncio
+async def test_get_user_id_from_mention_with_different_case_mention(db: Session):
+    # Given: A users exist within our system
+    john = create_test_user(db, telegram_user_id=12345, username="johndoe", first_name="John", last_name="Doe")
+
+    # And: We mention them by username
+    mention = "@JohnDoe"
+
+    # When: We convert from their mention text to their id
+    result = await get_user_id_from_mention(db, mention)
+
+    # Then: The correct user_id is found
+    assert result == UserIdMentionMapping(mention=mention, user_id=john.user_id)
 
 @pytest.mark.asyncio
 async def test_get_user_id_from_mention_with_username_non_existent_user(db: Session):

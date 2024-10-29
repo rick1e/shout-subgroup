@@ -1,6 +1,6 @@
 from typing import Sequence, Type
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from shout_subgroup.models import (
@@ -98,7 +98,7 @@ async def find_user_by_user_id(db: Session, user_id: str) -> UserModel | None:
 async def find_user_by_username(db: Session, username: str) -> UserModel | None:
     stmt = (
         select(UserModel)
-        .where(UserModel.username == username)
+        .where(func.lower(UserModel.username) == username.lower())
     )
     result = db.execute(stmt).scalars().first()
     return result
